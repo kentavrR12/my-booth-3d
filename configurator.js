@@ -1,277 +1,649 @@
-/**
- * Exhibition Booth 3D Configurator
- * Built with Three.js
- */
-
 // ============================================================================
-// CONFIGURATION DATA
+// 3D Exhibition Booth Configurator v2 (StyleYourStand-like)
 // ============================================================================
 
-const CONFIG = {
-    construction: {
-        standard: { name: 'Standard', price: 500 },
-        exclusive: { name: 'Exclusive', price: 800 }
+// Configuration State
+const config = {
+    dimensions: {
+        length: 4,
+        width: 3,
+        height: 2.5
     },
-    materials: {
-        plastic: { name: 'Plastic', pricePerM2: 50 },
-        wood: { name: 'Wood', pricePerM2: 150 },
-        metal: { name: 'Metal', pricePerM2: 200 }
+    walls: {
+        color: 0xffffff,
+        material: 'plastic'
     },
-    equipment: {
-        lighting: { name: 'Lighting', price: 300 },
-        furniture: { name: 'Furniture', price: 400 },
-        monitor: { name: 'Monitor', price: 800 }
+    floor: {
+        color: 0xcccccc,
+        type: 'carpet'
+    },
+    lighting: {
+        intensity: 1,
+        type: 'warm'
+    },
+    furniture: [],
+    equipment: [],
+    prices: {
+        base: 500,
+        materials: {
+            plastic: 50,
+            wood: 150,
+            metal: 200,
+            fabric: 100
+        },
+        floor: {
+            carpet: 30,
+            tile: 40,
+            wood: 60
+        },
+        furniture: {
+            table: 200,
+            chair: 100,
+            counter: 400,
+            shelf: 300
+        },
+        equipment: {
+            monitor: 800,
+            speaker: 300,
+            camera: 500,
+            banner: 150
+        }
     }
 };
 
-// ============================================================================
-// STATE MANAGEMENT
-// ============================================================================
-
-let state = {
-    length: 3,
-    width: 3,
-    construction: 'standard',
-    wallColor: '#FF6B6B',
-    materials: [],
-    equipment: []
-};
+// Three.js Setup
+let scene, camera, renderer;
+let boothGroup, wallsGroup, floorMesh, lightingSetup;
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
 
 // ============================================================================
-// THREE.JS SETUP
+// INITIALIZATION
 // ============================================================================
 
-let scene, camera, renderer, boothGroup;
-const canvasContainer = document.getElementById('canvas');
-
-function initThreeJS() {
+function init() {
     // Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f0f0);
-    scene.fog = new THREE.Fog(0xf0f0f0, 100, 1000);
+    scene.background = new THREE.Color(0xf5f5f5);
+    scene.fog = new THREE.Fog(0xf5f5f5, 100, 1000);
 
     // Camera
-    const width = canvasContainer.clientWidth;
-    const height = canvasContainer.clientHeight;
+    const width = window.innerWidth - 350;
+    const height = window.innerHeight;
     camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.set(8, 6, 8);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(6, 5, 6);
+    camera.lookAt(0, 1, 0);
 
     // Renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const canvas = document.getElementById('canvas');
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowShadowMap;
-    canvasContainer.appendChild(renderer.domElement);
+
+    // Groups
+    boothGroup = new THREE.Group();
+    scene.add(boothGroup);
 
     // Lighting
+    setupLighting();
+
+    // Initial Booth
+    createBooth();
+
+    // Event Listeners
+    setupEventListeners();
+
+    // Animation Loop
+    animate();
+
+    // Handle Resize
+    window.addEventListener('resize', onWindowResize);
+
+    console.log('✅ 3D Configurator initialized');
+}
+
+// ============================================================================
+// LIGHTING
+// ============================================================================
+
+function setupLighting() {
+    // Ambient Light
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
+    // Directional Light (Sun)
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 15, 10);
+    directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.far = 50;
     directionalLight.shadow.camera.left = -20;
     directionalLight.shadow.camera.right = 20;
     directionalLight.shadow.camera.top = 20;
     directionalLight.shadow.camera.bottom = -20;
-    directionalLight.shadow.camera.far = 50;
     scene.add(directionalLight);
 
-    // Ground
-    const groundGeometry = new THREE.PlaneGeometry(50, 50);
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
+    // Point Light (Accent)
+    const pointLight = new THREE.PointLight(0xffffff, 0.5);
+    pointLight.position.set(-5, 8, -5);
+    scene.add(pointLight);
 
-    // Booth Group
-    boothGroup = new THREE.Group();
-    scene.add(boothGroup);
-
-    // Controls
-    setupControls();
-
-    // Initial booth
-    createBooth();
-
-    // Animation loop
-    animate();
-
-    // Handle window resize
-    window.addEventListener('resize', onWindowResize);
+    lightingSetup = { ambientLight, directionalLight, pointLight };
 }
+
+// ============================================================================
+// CREATE BOOTH
+// ============================================================================
 
 function createBooth() {
     // Clear previous booth
     boothGroup.clear();
 
-    const length = state.length;
-    const width = state.width;
-    const height = 2.5;
-
-    // Wall material
-    const wallColor = new THREE.Color(state.wallColor);
-    const wallMaterial = new THREE.MeshStandardMaterial({
-        color: wallColor,
-        roughness: 0.7,
-        metalness: 0.1
-    });
-
-    // Back wall
-    const backWallGeometry = new THREE.BoxGeometry(length, height, 0.1);
-    const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-    backWall.position.z = -width / 2;
-    backWall.castShadow = true;
-    backWall.receiveShadow = true;
-    boothGroup.add(backWall);
-
-    // Left wall
-    const leftWallGeometry = new THREE.BoxGeometry(0.1, height, width);
-    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
-    leftWall.position.x = -length / 2;
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    boothGroup.add(leftWall);
-
-    // Right wall
-    const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
-    rightWall.position.x = length / 2;
-    rightWall.castShadow = true;
-    rightWall.receiveShadow = true;
-    boothGroup.add(rightWall);
+    const { length, width, height } = config.dimensions;
+    const { color: wallColor } = config.walls;
+    const { color: floorColor, type: floorType } = config.floor;
 
     // Floor
-    const floorGeometry = new THREE.BoxGeometry(length, 0.05, width);
+    const floorGeometry = new THREE.PlaneGeometry(length, width);
     const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0x888888,
-        roughness: 0.8
+        color: floorColor,
+        roughness: floorType === 'tile' ? 0.3 : 0.8,
+        metalness: floorType === 'metal' ? 0.8 : 0.1
     });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.position.y = -0.025;
-    floor.castShadow = true;
-    floor.receiveShadow = true;
-    boothGroup.add(floor);
+    floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.receiveShadow = true;
+    boothGroup.add(floorMesh);
 
-    // Add equipment visualization
+    // Walls
+    wallsGroup = new THREE.Group();
+
+    const wallMaterial = new THREE.MeshStandardMaterial({
+        color: wallColor,
+        roughness: config.walls.material === 'plastic' ? 0.3 : 0.8,
+        metalness: config.walls.material === 'metal' ? 0.7 : 0.1
+    });
+
+    // Front Wall
+    const frontWall = createWall(length, height);
+    frontWall.position.z = width / 2;
+    frontWall.material = wallMaterial;
+    wallsGroup.add(frontWall);
+
+    // Back Wall
+    const backWall = createWall(length, height);
+    backWall.position.z = -width / 2;
+    backWall.material = wallMaterial;
+    wallsGroup.add(backWall);
+
+    // Left Wall
+    const leftWall = createWall(width, height);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.x = -length / 2;
+    leftWall.material = wallMaterial;
+    wallsGroup.add(leftWall);
+
+    // Right Wall
+    const rightWall = createWall(width, height);
+    rightWall.rotation.y = Math.PI / 2;
+    rightWall.position.x = length / 2;
+    rightWall.material = wallMaterial;
+    wallsGroup.add(rightWall);
+
+    boothGroup.add(wallsGroup);
+
+    // Add furniture and equipment
+    addFurniture();
     addEquipment();
 
-    // Center booth
-    boothGroup.position.y = 0;
+    updatePrice();
+}
+
+function createWall(width, height) {
+    const geometry = new THREE.PlaneGeometry(width, height);
+    const mesh = new THREE.Mesh(geometry);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+}
+
+// ============================================================================
+// FURNITURE & EQUIPMENT
+// ============================================================================
+
+function addFurniture() {
+    config.furniture.forEach(item => {
+        let object;
+
+        switch (item) {
+            case 'table':
+                object = createTable();
+                object.position.set(0, 0, 0);
+                break;
+            case 'chair':
+                object = createChair();
+                object.position.set(1, 0, 0);
+                break;
+            case 'counter':
+                object = createCounter();
+                object.position.set(-1, 0, 0);
+                break;
+            case 'shelf':
+                object = createShelf();
+                object.position.set(0, 0, 1);
+                break;
+        }
+
+        if (object) {
+            boothGroup.add(object);
+        }
+    });
 }
 
 function addEquipment() {
-    // Lighting
-    if (state.equipment.includes('lighting')) {
-        const lightGeometry = new THREE.SphereGeometry(0.15, 8, 8);
-        const lightMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffff00,
-            emissive: 0xffff00,
-            emissiveIntensity: 0.5
-        });
-        const light1 = new THREE.Mesh(lightGeometry, lightMaterial);
-        light1.position.set(-state.length / 3, 2, -state.width / 3);
-        boothGroup.add(light1);
+    config.equipment.forEach((item, index) => {
+        let object;
 
-        const light2 = new THREE.Mesh(lightGeometry, lightMaterial);
-        light2.position.set(state.length / 3, 2, -state.width / 3);
-        boothGroup.add(light2);
-    }
+        switch (item) {
+            case 'monitor':
+                object = createMonitor();
+                object.position.set(0, 1.5, config.dimensions.width / 2 - 0.1);
+                break;
+            case 'speaker':
+                object = createSpeaker();
+                object.position.set(1, 1.5, config.dimensions.width / 2 - 0.1);
+                break;
+            case 'camera':
+                object = createCamera();
+                object.position.set(-1, 2, 0);
+                break;
+            case 'banner':
+                object = createBanner();
+                object.position.set(0, 2, config.dimensions.width / 2 - 0.05);
+                break;
+        }
 
-    // Furniture
-    if (state.equipment.includes('furniture')) {
-        const furnitureGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.4);
-        const furnitureMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8B4513,
-            roughness: 0.6
-        });
-        const furniture1 = new THREE.Mesh(furnitureGeometry, furnitureMaterial);
-        furniture1.position.set(-state.length / 3, 0.4, 0);
-        furniture1.castShadow = true;
-        furniture1.receiveShadow = true;
-        boothGroup.add(furniture1);
-
-        const furniture2 = new THREE.Mesh(furnitureGeometry, furnitureMaterial);
-        furniture2.position.set(state.length / 3, 0.4, 0);
-        furniture2.castShadow = true;
-        furniture2.receiveShadow = true;
-        boothGroup.add(furniture2);
-    }
-
-    // Monitor
-    if (state.equipment.includes('monitor')) {
-        const monitorGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.05);
-        const monitorMaterial = new THREE.MeshStandardMaterial({
-            color: 0x000000,
-            roughness: 0.3,
-            metalness: 0.8
-        });
-        const monitor = new THREE.Mesh(monitorGeometry, monitorMaterial);
-        monitor.position.set(0, 1.2, -state.width / 2 + 0.1);
-        monitor.castShadow = true;
-        monitor.receiveShadow = true;
-        boothGroup.add(monitor);
-
-        // Screen glow
-        const screenGeometry = new THREE.BoxGeometry(0.55, 0.35, 0.02);
-        const screenMaterial = new THREE.MeshStandardMaterial({
-            color: 0x00ff00,
-            emissive: 0x00ff00,
-            emissiveIntensity: 0.3
-        });
-        const screen = new THREE.Mesh(screenGeometry, screenMaterial);
-        screen.position.z += 0.04;
-        monitor.add(screen);
-    }
-}
-
-function setupControls() {
-    let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-
-    renderer.domElement.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-    });
-
-    renderer.domElement.addEventListener('mousemove', (e) => {
-        if (isDragging && e.buttons === 1) {
-            const deltaX = e.clientX - previousMousePosition.x;
-            const deltaY = e.clientY - previousMousePosition.y;
-
-            boothGroup.rotation.y += deltaX * 0.01;
-            boothGroup.rotation.x += deltaY * 0.01;
-
-            previousMousePosition = { x: e.clientX, y: e.clientY };
+        if (object) {
+            boothGroup.add(object);
         }
     });
-
-    renderer.domElement.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-
-    renderer.domElement.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        camera.position.z += e.deltaY * 0.01;
-        camera.position.z = Math.max(3, Math.min(30, camera.position.z));
-    });
-
-    renderer.domElement.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-    });
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
+function createTable() {
+    const group = new THREE.Group();
+    
+    // Tabletop
+    const topGeometry = new THREE.BoxGeometry(1.5, 0.05, 0.8);
+    const topMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
+    const top = new THREE.Mesh(topGeometry, topMaterial);
+    top.position.y = 0.75;
+    top.castShadow = true;
+    group.add(top);
+
+    // Legs
+    for (let i = 0; i < 4; i++) {
+        const legGeometry = new THREE.BoxGeometry(0.05, 0.75, 0.05);
+        const leg = new THREE.Mesh(legGeometry, topMaterial);
+        leg.position.x = (i % 2 === 0 ? 0.7 : -0.7);
+        leg.position.z = (i < 2 ? 0.35 : -0.35);
+        leg.castShadow = true;
+        group.add(leg);
+    }
+
+    return group;
+}
+
+function createChair() {
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5 });
+
+    // Seat
+    const seatGeometry = new THREE.BoxGeometry(0.5, 0.05, 0.5);
+    const seat = new THREE.Mesh(seatGeometry, material);
+    seat.position.y = 0.4;
+    seat.castShadow = true;
+    group.add(seat);
+
+    // Backrest
+    const backGeometry = new THREE.BoxGeometry(0.5, 0.6, 0.05);
+    const back = new THREE.Mesh(backGeometry, material);
+    back.position.y = 0.7;
+    back.position.z = -0.25;
+    back.castShadow = true;
+    group.add(back);
+
+    return group;
+}
+
+function createCounter() {
+    const geometry = new THREE.BoxGeometry(1.2, 0.9, 0.6);
+    const material = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.6 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.y = 0.45;
+    mesh.castShadow = true;
+    return mesh;
+}
+
+function createShelf() {
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
+
+    for (let i = 0; i < 3; i++) {
+        const shelfGeometry = new THREE.BoxGeometry(1, 0.02, 0.4);
+        const shelf = new THREE.Mesh(shelfGeometry, material);
+        shelf.position.y = 0.5 + i * 0.6;
+        shelf.castShadow = true;
+        group.add(shelf);
+    }
+
+    return group;
+}
+
+function createMonitor() {
+    const group = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+
+    // Screen
+    const screenGeometry = new THREE.BoxGeometry(0.8, 0.5, 0.05);
+    const screen = new THREE.Mesh(screenGeometry, material);
+    screen.castShadow = true;
+    group.add(screen);
+
+    // Stand
+    const standGeometry = new THREE.BoxGeometry(0.1, 0.3, 0.1);
+    const stand = new THREE.Mesh(standGeometry, material);
+    stand.position.y = -0.4;
+    stand.castShadow = true;
+    group.add(stand);
+
+    return group;
+}
+
+function createSpeaker() {
+    const geometry = new THREE.BoxGeometry(0.3, 0.5, 0.3);
+    const material = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    return mesh;
+}
+
+function createCamera() {
+    const geometry = new THREE.BoxGeometry(0.15, 0.15, 0.2);
+    const material = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    return mesh;
+}
+
+function createBanner() {
+    const geometry = new THREE.PlaneGeometry(2, 1);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: 0xff6b6b,
+        emissive: 0xff6b6b,
+        emissiveIntensity: 0.3
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    return mesh;
+}
+
+// ============================================================================
+// EVENT LISTENERS
+// ============================================================================
+
+function setupEventListeners() {
+    // Dimension Controls
+    document.querySelectorAll('[data-length]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-length]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.dimensions.length = parseFloat(e.target.dataset.length);
+            createBooth();
+        });
+    });
+
+    document.querySelectorAll('[data-width]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-width]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.dimensions.width = parseFloat(e.target.dataset.width);
+            createBooth();
+        });
+    });
+
+    document.querySelectorAll('[data-height]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-height]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.dimensions.height = parseFloat(e.target.dataset.height);
+            createBooth();
+        });
+    });
+
+    // Wall Color
+    document.getElementById('wallColor').addEventListener('change', (e) => {
+        config.walls.color = parseInt(e.target.value.slice(1), 16);
+        createBooth();
+    });
+
+    // Wall Material
+    document.querySelectorAll('[data-material]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-material]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.walls.material = e.target.dataset.material;
+            createBooth();
+        });
+    });
+
+    // Floor Color
+    document.getElementById('floorColor').addEventListener('change', (e) => {
+        config.floor.color = parseInt(e.target.value.slice(1), 16);
+        createBooth();
+    });
+
+    // Floor Type
+    document.querySelectorAll('[data-floor]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-floor]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.floor.type = e.target.dataset.floor;
+            createBooth();
+        });
+    });
+
+    // Furniture
+    document.querySelectorAll('[data-furniture]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const furniture = e.target.dataset.furniture;
+            if (config.furniture.includes(furniture)) {
+                config.furniture = config.furniture.filter(f => f !== furniture);
+                e.target.classList.remove('selected');
+            } else {
+                config.furniture.push(furniture);
+                e.target.classList.add('selected');
+            }
+            createBooth();
+        });
+    });
+
+    // Equipment
+    document.querySelectorAll('[data-equipment]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const equipment = e.target.dataset.equipment;
+            if (config.equipment.includes(equipment)) {
+                config.equipment = config.equipment.filter(eq => eq !== equipment);
+                e.target.classList.remove('selected');
+            } else {
+                config.equipment.push(equipment);
+                e.target.classList.add('selected');
+            }
+            createBooth();
+        });
+    });
+
+    // Lighting
+    document.getElementById('lightIntensity').addEventListener('input', (e) => {
+        config.lighting.intensity = parseFloat(e.target.value);
+        const value = config.lighting.intensity;
+        const label = value < 0.7 ? 'Тусклое' : value > 1.3 ? 'Яркое' : 'Нормальное';
+        document.getElementById('lightValue').textContent = label;
+        updateLighting();
+    });
+
+    document.querySelectorAll('[data-lighting]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('[data-lighting]').forEach(b => b.classList.remove('selected'));
+            e.target.classList.add('selected');
+            config.lighting.type = e.target.dataset.lighting;
+            updateLighting();
+        });
+    });
+
+    // Category Headers
+    document.querySelectorAll('.category-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const category = header.parentElement;
+            category.classList.toggle('active');
+        });
+    });
+
+    // Canvas Events
+    document.getElementById('canvas').addEventListener('mousedown', onMouseDown);
+    document.getElementById('canvas').addEventListener('mousemove', onMouseMove);
+    document.getElementById('canvas').addEventListener('mouseup', onMouseUp);
+    document.getElementById('canvas').addEventListener('wheel', onMouseWheel, false);
+}
+
+// ============================================================================
+// MOUSE CONTROLS
+// ============================================================================
+
+function onMouseDown(e) {
+    isDragging = true;
+    previousMousePosition = { x: e.clientX, y: e.clientY };
+}
+
+function onMouseMove(e) {
+    if (isDragging) {
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+
+        if (e.buttons === 1) { // Left click - rotate
+            boothGroup.rotation.y += deltaX * 0.01;
+            boothGroup.rotation.x += deltaY * 0.01;
+        } else if (e.buttons === 2) { // Right click - pan
+            camera.position.x -= deltaX * 0.01;
+            camera.position.y += deltaY * 0.01;
+        }
+
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+    }
+}
+
+function onMouseUp() {
+    isDragging = false;
+}
+
+function onMouseWheel(e) {
+    e.preventDefault();
+    const zoomSpeed = 0.1;
+    const direction = camera.position.clone().normalize();
+
+    if (e.deltaY > 0) {
+        camera.position.addScaledVector(direction, zoomSpeed);
+    } else {
+        camera.position.addScaledVector(direction, -zoomSpeed);
+    }
+}
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+function updateLighting() {
+    const intensity = config.lighting.intensity;
+    const type = config.lighting.type;
+
+    lightingSetup.ambientLight.intensity = 0.6 * intensity;
+    lightingSetup.directionalLight.intensity = 0.8 * intensity;
+
+    let color = 0xffffff;
+    if (type === 'warm') color = 0xffcc99;
+    if (type === 'cool') color = 0x99ccff;
+
+    lightingSetup.directionalLight.color.setHex(color);
+    lightingSetup.ambientLight.color.setHex(color);
+}
+
+function updatePrice() {
+    const { length, width, height } = config.dimensions;
+    const area = length * width;
+
+    let total = config.prices.base * area;
+
+    // Wall material cost
+    total += config.prices.materials[config.walls.material] * (2 * (length + width) * height);
+
+    // Floor cost
+    total += config.prices.floor[config.floor.type] * area;
+
+    // Furniture cost
+    config.furniture.forEach(item => {
+        total += config.prices.furniture[item] || 0;
+    });
+
+    // Equipment cost
+    config.equipment.forEach(item => {
+        total += config.prices.equipment[item] || 0;
+    });
+
+    document.getElementById('totalPrice').textContent = `${total.toLocaleString('ru-RU')} €`;
+}
+
+function saveConfigure() {
+    const configData = {
+        dimensions: config.dimensions,
+        walls: config.walls,
+        floor: config.floor,
+        lighting: config.lighting,
+        furniture: config.furniture,
+        equipment: config.equipment
+    };
+
+    const dataString = btoa(JSON.stringify(configData));
+    const shareLink = `${window.location.href}?config=${dataString}`;
+
+    alert(`Ссылка сохранена:\n\n${shareLink}\n\nВы можете поделиться этой ссылкой или отправить в Telegram!`);
+    console.log('Configuration saved:', configData);
+}
+
+function resetConfigure() {
+    config.dimensions = { length: 4, width: 3, height: 2.5 };
+    config.walls = { color: 0xffffff, material: 'plastic' };
+    config.floor = { color: 0xcccccc, type: 'carpet' };
+    config.lighting = { intensity: 1, type: 'warm' };
+    config.furniture = [];
+    config.equipment = [];
+
+    document.querySelectorAll('.option-item').forEach(btn => btn.classList.remove('selected'));
+    document.querySelectorAll('[data-length="4"], [data-width="3"], [data-height="2.5"], [data-material="plastic"], [data-floor="carpet"], [data-lighting="warm"]').forEach(btn => btn.classList.add('selected'));
+
+    document.getElementById('wallColor').value = '#ffffff';
+    document.getElementById('floorColor').value = '#cccccc';
+    document.getElementById('lightIntensity').value = 1;
+
+    createBooth();
 }
 
 function onWindowResize() {
-    const width = canvasContainer.clientWidth;
-    const height = canvasContainer.clientHeight;
+    const width = window.innerWidth - 350;
+    const height = window.innerHeight;
 
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -279,220 +651,39 @@ function onWindowResize() {
 }
 
 // ============================================================================
-// COST CALCULATION
+// ANIMATION LOOP
 // ============================================================================
 
-function calculateCost() {
-    const area = state.length * state.width;
-    
-    // Base price
-    const basePrice = CONFIG.construction[state.construction].price * area;
-    
-    // Materials cost
-    let materialsPrice = 0;
-    state.materials.forEach(material => {
-        materialsPrice += CONFIG.materials[material].pricePerM2 * area;
-    });
-    
-    // Equipment cost
-    let equipmentPrice = 0;
-    state.equipment.forEach(equipment => {
-        equipmentPrice += CONFIG.equipment[equipment].price;
-    });
-    
-    return {
-        base: basePrice,
-        materials: materialsPrice,
-        equipment: equipmentPrice,
-        total: basePrice + materialsPrice + equipmentPrice
-    };
-}
-
-function updateCostDisplay() {
-    const costs = calculateCost();
-    
-    document.getElementById('costBase').textContent = `${costs.base.toFixed(2)}€`;
-    document.getElementById('costMaterials').textContent = `${costs.materials.toFixed(2)}€`;
-    document.getElementById('costEquipment').textContent = `${costs.equipment.toFixed(2)}€`;
-    document.getElementById('costTotal').textContent = `${costs.total.toFixed(2)}€`;
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
 }
 
 // ============================================================================
-// UI EVENT HANDLERS
+// LOAD CONFIG FROM URL
 // ============================================================================
 
-document.getElementById('lengthInput').addEventListener('change', (e) => {
-    state.length = parseFloat(e.target.value);
-    createBooth();
-    updateCostDisplay();
-});
-
-document.getElementById('widthInput').addEventListener('change', (e) => {
-    state.width = parseFloat(e.target.value);
-    createBooth();
-    updateCostDisplay();
-});
-
-// Construction type buttons
-document.querySelectorAll('[data-construction]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('[data-construction]').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        state.construction = e.target.dataset.construction;
-        updateCostDisplay();
-    });
-});
-
-// Color picker
-document.querySelectorAll('.color-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        state.wallColor = e.target.dataset.color;
-        createBooth();
-    });
-});
-
-// Materials checkboxes
-document.querySelectorAll('[data-material]').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            state.materials.push(e.target.dataset.material);
-        } else {
-            state.materials = state.materials.filter(m => m !== e.target.dataset.material);
-        }
-        createBooth();
-        updateCostDisplay();
-    });
-});
-
-// Equipment checkboxes
-document.querySelectorAll('[data-equipment]').forEach(checkbox => {
-    checkbox.addEventListener('change', (e) => {
-        if (e.target.checked) {
-            state.equipment.push(e.target.dataset.equipment);
-        } else {
-            state.equipment = state.equipment.filter(eq => eq !== e.target.dataset.equipment);
-        }
-        createBooth();
-        updateCostDisplay();
-    });
-});
-
-// ============================================================================
-// CONFIGURATION SAVE/RESET
-// ============================================================================
-
-function saveConfiguration() {
-    const config = {
-        length: state.length,
-        width: state.width,
-        construction: state.construction,
-        wallColor: state.wallColor,
-        materials: state.materials,
-        equipment: state.equipment,
-        cost: calculateCost()
-    };
-
-    // Save to localStorage
-    localStorage.setItem('boothConfig', JSON.stringify(config));
-
-    // Generate shareable link
-    const params = new URLSearchParams({
-        length: state.length,
-        width: state.width,
-        construction: state.construction,
-        color: state.wallColor,
-        materials: state.materials.join(','),
-        equipment: state.equipment.join(',')
-    });
-
-    const shareLink = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-
-    // Show success message
-    alert(`Configuration saved!\n\nShare link:\n${shareLink}`);
-
-    // Copy to clipboard
-    navigator.clipboard.writeText(shareLink);
-    console.log('Share link copied to clipboard!');
-
-    // Log configuration
-    console.log('Configuration saved:', config);
-}
-
-function resetConfiguration() {
-    state = {
-        length: 3,
-        width: 3,
-        construction: 'standard',
-        wallColor: '#FF6B6B',
-        materials: [],
-        equipment: []
-    };
-
-    // Reset UI
-    document.getElementById('lengthInput').value = 3;
-    document.getElementById('widthInput').value = 3;
-    document.querySelectorAll('[data-construction]').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-construction="standard"]').classList.add('active');
-    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-color="#FF6B6B"]').classList.add('active');
-    document.querySelectorAll('[data-material], [data-equipment]').forEach(cb => cb.checked = false);
-
-    createBooth();
-    updateCostDisplay();
-}
-
-// ============================================================================
-// LOAD FROM URL PARAMETERS
-// ============================================================================
-
-function loadFromURL() {
+function loadConfigFromURL() {
     const params = new URLSearchParams(window.location.search);
+    const configData = params.get('config');
 
-    if (params.has('length')) state.length = parseFloat(params.get('length'));
-    if (params.has('width')) state.width = parseFloat(params.get('width'));
-    if (params.has('construction')) state.construction = params.get('construction');
-    if (params.has('color')) state.wallColor = params.get('color');
-    if (params.has('materials')) {
-        state.materials = params.get('materials').split(',').filter(m => m);
+    if (configData) {
+        try {
+            const decoded = JSON.parse(atob(configData));
+            Object.assign(config, decoded);
+            createBooth();
+            console.log('Configuration loaded from URL:', config);
+        } catch (e) {
+            console.error('Error loading configuration:', e);
+        }
     }
-    if (params.has('equipment')) {
-        state.equipment = params.get('equipment').split(',').filter(e => e);
-    }
-
-    // Update UI
-    document.getElementById('lengthInput').value = state.length;
-    document.getElementById('widthInput').value = state.width;
-
-    document.querySelectorAll('[data-construction]').forEach(b => {
-        b.classList.toggle('active', b.dataset.construction === state.construction);
-    });
-
-    document.querySelectorAll('.color-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.color === state.wallColor);
-    });
-
-    state.materials.forEach(material => {
-        const checkbox = document.querySelector(`[data-material="${material}"]`);
-        if (checkbox) checkbox.checked = true;
-    });
-
-    state.equipment.forEach(equipment => {
-        const checkbox = document.querySelector(`[data-equipment="${equipment}"]`);
-        if (checkbox) checkbox.checked = true;
-    });
-
-    createBooth();
-    updateCostDisplay();
 }
 
 // ============================================================================
-// INITIALIZATION
+// START
 // ============================================================================
 
-window.addEventListener('load', () => {
-    initThreeJS();
-    loadFromURL();
-    updateCostDisplay();
+window.addEventListener('DOMContentLoaded', () => {
+    init();
+    loadConfigFromURL();
 });
