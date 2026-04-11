@@ -1,6 +1,8 @@
 // ============================================================================
-// 3D Exhibition Booth Configurator v2 (StyleYourStand-like)
+// 3D Exhibition Booth Configurator v2.1 (FIXED & MULTILINGUAL)
 // ============================================================================
+
+console.log('✅ Configurator v2.1 loading...');
 
 // Configuration State
 const config = {
@@ -64,25 +66,35 @@ let previousMousePosition = { x: 0, y: 0 };
 // ============================================================================
 
 function init() {
+    console.log('🎨 Initializing 3D scene...');
+
     // Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf5f5f5);
     scene.fog = new THREE.Fog(0xf5f5f5, 100, 1000);
 
     // Camera
-    const width = window.innerWidth - 350;
-    const height = window.innerHeight;
+    const canvas = document.getElementById('canvas');
+    if (!canvas) {
+        console.error('❌ Canvas element not found!');
+        return;
+    }
+
+    const width = canvas.clientWidth || window.innerWidth - 350;
+    const height = canvas.clientHeight || window.innerHeight;
+    
     camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     camera.position.set(6, 5, 6);
     camera.lookAt(0, 1, 0);
 
     // Renderer
-    const canvas = document.getElementById('canvas');
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+
+    console.log(`✅ Renderer initialized: ${width}x${height}`);
 
     // Groups
     boothGroup = new THREE.Group();
@@ -103,7 +115,7 @@ function init() {
     // Handle Resize
     window.addEventListener('resize', onWindowResize);
 
-    console.log('✅ 3D Configurator initialized');
+    console.log('✅ 3D Configurator initialized successfully');
 }
 
 // ============================================================================
@@ -134,6 +146,7 @@ function setupLighting() {
     scene.add(pointLight);
 
     lightingSetup = { ambientLight, directionalLight, pointLight };
+    console.log('✅ Lighting setup complete');
 }
 
 // ============================================================================
@@ -141,6 +154,8 @@ function setupLighting() {
 // ============================================================================
 
 function createBooth() {
+    console.log('🏗️ Creating booth with config:', config);
+
     // Clear previous booth
     boothGroup.clear();
 
@@ -202,6 +217,7 @@ function createBooth() {
     addEquipment();
 
     updatePrice();
+    console.log('✅ Booth created successfully');
 }
 
 function createWall(width, height) {
@@ -397,9 +413,12 @@ function createBanner() {
 // ============================================================================
 
 function setupEventListeners() {
-    // Dimension Controls
+    console.log('🔧 Setting up event listeners...');
+
+    // Dimension Controls - LENGTH
     document.querySelectorAll('[data-length]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('📏 Length changed to:', e.target.dataset.length);
             document.querySelectorAll('[data-length]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.dimensions.length = parseFloat(e.target.dataset.length);
@@ -407,8 +426,10 @@ function setupEventListeners() {
         });
     });
 
+    // Dimension Controls - WIDTH
     document.querySelectorAll('[data-width]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('📏 Width changed to:', e.target.dataset.width);
             document.querySelectorAll('[data-width]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.dimensions.width = parseFloat(e.target.dataset.width);
@@ -416,8 +437,10 @@ function setupEventListeners() {
         });
     });
 
+    // Dimension Controls - HEIGHT
     document.querySelectorAll('[data-height]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('📏 Height changed to:', e.target.dataset.height);
             document.querySelectorAll('[data-height]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.dimensions.height = parseFloat(e.target.dataset.height);
@@ -426,14 +449,19 @@ function setupEventListeners() {
     });
 
     // Wall Color
-    document.getElementById('wallColor').addEventListener('change', (e) => {
-        config.walls.color = parseInt(e.target.value.slice(1), 16);
-        createBooth();
-    });
+    const wallColorInput = document.getElementById('wallColor');
+    if (wallColorInput) {
+        wallColorInput.addEventListener('change', (e) => {
+            console.log('🎨 Wall color changed to:', e.target.value);
+            config.walls.color = parseInt(e.target.value.slice(1), 16);
+            createBooth();
+        });
+    }
 
     // Wall Material
     document.querySelectorAll('[data-material]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('🧱 Material changed to:', e.target.dataset.material);
             document.querySelectorAll('[data-material]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.walls.material = e.target.dataset.material;
@@ -442,14 +470,19 @@ function setupEventListeners() {
     });
 
     // Floor Color
-    document.getElementById('floorColor').addEventListener('change', (e) => {
-        config.floor.color = parseInt(e.target.value.slice(1), 16);
-        createBooth();
-    });
+    const floorColorInput = document.getElementById('floorColor');
+    if (floorColorInput) {
+        floorColorInput.addEventListener('change', (e) => {
+            console.log('🏢 Floor color changed to:', e.target.value);
+            config.floor.color = parseInt(e.target.value.slice(1), 16);
+            createBooth();
+        });
+    }
 
     // Floor Type
     document.querySelectorAll('[data-floor]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('🏢 Floor type changed to:', e.target.dataset.floor);
             document.querySelectorAll('[data-floor]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.floor.type = e.target.dataset.floor;
@@ -461,6 +494,7 @@ function setupEventListeners() {
     document.querySelectorAll('[data-furniture]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const furniture = e.target.dataset.furniture;
+            console.log('🪑 Furniture toggled:', furniture);
             if (config.furniture.includes(furniture)) {
                 config.furniture = config.furniture.filter(f => f !== furniture);
                 e.target.classList.remove('selected');
@@ -476,6 +510,7 @@ function setupEventListeners() {
     document.querySelectorAll('[data-equipment]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const equipment = e.target.dataset.equipment;
+            console.log('📺 Equipment toggled:', equipment);
             if (config.equipment.includes(equipment)) {
                 config.equipment = config.equipment.filter(eq => eq !== equipment);
                 e.target.classList.remove('selected');
@@ -488,16 +523,19 @@ function setupEventListeners() {
     });
 
     // Lighting
-    document.getElementById('lightIntensity').addEventListener('input', (e) => {
-        config.lighting.intensity = parseFloat(e.target.value);
-        const value = config.lighting.intensity;
-        const label = value < 0.7 ? 'Тусклое' : value > 1.3 ? 'Яркое' : 'Нормальное';
-        document.getElementById('lightValue').textContent = label;
-        updateLighting();
-    });
+    const lightIntensity = document.getElementById('lightIntensity');
+    if (lightIntensity) {
+        lightIntensity.addEventListener('input', (e) => {
+            config.lighting.intensity = parseFloat(e.target.value);
+            document.getElementById('lightValue').textContent = e.target.value;
+            console.log('💡 Light intensity changed to:', config.lighting.intensity);
+            updateLighting();
+        });
+    }
 
     document.querySelectorAll('[data-lighting]').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            console.log('💡 Light type changed to:', e.target.dataset.lighting);
             document.querySelectorAll('[data-lighting]').forEach(b => b.classList.remove('selected'));
             e.target.classList.add('selected');
             config.lighting.type = e.target.dataset.lighting;
@@ -514,10 +552,15 @@ function setupEventListeners() {
     });
 
     // Canvas Events
-    document.getElementById('canvas').addEventListener('mousedown', onMouseDown);
-    document.getElementById('canvas').addEventListener('mousemove', onMouseMove);
-    document.getElementById('canvas').addEventListener('mouseup', onMouseUp);
-    document.getElementById('canvas').addEventListener('wheel', onMouseWheel, false);
+    const canvas = document.getElementById('canvas');
+    if (canvas) {
+        canvas.addEventListener('mousedown', onMouseDown);
+        canvas.addEventListener('mousemove', onMouseMove);
+        canvas.addEventListener('mouseup', onMouseUp);
+        canvas.addEventListener('wheel', onMouseWheel, false);
+    }
+
+    console.log('✅ Event listeners setup complete');
 }
 
 // ============================================================================
@@ -603,7 +646,10 @@ function updatePrice() {
         total += config.prices.equipment[item] || 0;
     });
 
-    document.getElementById('totalPrice').textContent = `${total.toLocaleString('ru-RU')} €`;
+    const priceElement = document.getElementById('totalPrice');
+    if (priceElement) {
+        priceElement.textContent = `${total.toLocaleString('ru-RU')} €`;
+    }
 }
 
 function saveConfigure() {
@@ -617,13 +663,14 @@ function saveConfigure() {
     };
 
     const dataString = btoa(JSON.stringify(configData));
-    const shareLink = `${window.location.href}?config=${dataString}`;
+    const shareLink = `${window.location.href.split('?')[0]}?config=${dataString}`;
 
-    alert(`Ссылка сохранена:\n\n${shareLink}\n\nВы можете поделиться этой ссылкой или отправить в Telegram!`);
+    alert(`Configuration saved!\n\n${shareLink}`);
     console.log('Configuration saved:', configData);
 }
 
 function resetConfigure() {
+    console.log('🔄 Resetting configuration...');
     config.dimensions = { length: 4, width: 3, height: 2.5 };
     config.walls = { color: 0xffffff, material: 'plastic' };
     config.floor = { color: 0xcccccc, type: 'carpet' };
@@ -634,16 +681,23 @@ function resetConfigure() {
     document.querySelectorAll('.option-item').forEach(btn => btn.classList.remove('selected'));
     document.querySelectorAll('[data-length="4"], [data-width="3"], [data-height="2.5"], [data-material="plastic"], [data-floor="carpet"], [data-lighting="warm"]').forEach(btn => btn.classList.add('selected'));
 
-    document.getElementById('wallColor').value = '#ffffff';
-    document.getElementById('floorColor').value = '#cccccc';
-    document.getElementById('lightIntensity').value = 1;
+    const wallColor = document.getElementById('wallColor');
+    const floorColor = document.getElementById('floorColor');
+    const lightIntensity = document.getElementById('lightIntensity');
+
+    if (wallColor) wallColor.value = '#ffffff';
+    if (floorColor) floorColor.value = '#cccccc';
+    if (lightIntensity) lightIntensity.value = 1;
 
     createBooth();
 }
 
 function onWindowResize() {
-    const width = window.innerWidth - 350;
-    const height = window.innerHeight;
+    const canvas = document.getElementById('canvas');
+    if (!canvas) return;
+
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
 
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -672,9 +726,9 @@ function loadConfigFromURL() {
             const decoded = JSON.parse(atob(configData));
             Object.assign(config, decoded);
             createBooth();
-            console.log('Configuration loaded from URL:', config);
+            console.log('✅ Configuration loaded from URL:', config);
         } catch (e) {
-            console.error('Error loading configuration:', e);
+            console.error('❌ Error loading configuration:', e);
         }
     }
 }
@@ -684,6 +738,22 @@ function loadConfigFromURL() {
 // ============================================================================
 
 window.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded, initializing...');
     init();
     loadConfigFromURL();
 });
+
+// Fallback initialization if DOMContentLoaded already fired
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('📄 DOM loaded (via event), initializing...');
+        init();
+        loadConfigFromURL();
+    });
+} else {
+    console.log('📄 DOM already loaded, initializing immediately...');
+    setTimeout(() => {
+        init();
+        loadConfigFromURL();
+    }, 100);
+}
