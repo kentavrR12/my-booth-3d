@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Exhibition Booth Configurator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -26,6 +27,41 @@
             gap: 0;
         }
 
+        /* ==================== LANGUAGE SWITCHER ==================== */
+        .language-switcher {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .lang-btn {
+            padding: 6px 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .lang-btn:hover {
+            border-color: #667eea;
+        }
+
         /* ==================== SIDEBAR ==================== */
         .sidebar {
             width: 350px;
@@ -35,6 +71,7 @@
             padding: 20px;
             display: flex;
             flex-direction: column;
+            margin-top: 50px;
         }
 
         .sidebar-header {
@@ -97,6 +134,7 @@
 
         .category-icon {
             font-size: 20px;
+            margin-right: 8px;
         }
 
         .category-content {
@@ -165,6 +203,24 @@
 
         .color-picker:hover {
             border-color: #667eea;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 600;
+            min-width: 40px;
         }
 
         /* ==================== PRICE DISPLAY ==================== */
@@ -296,74 +352,41 @@
                 width: 100%;
                 height: auto;
                 max-height: 40vh;
+                margin-top: 0;
             }
 
             .canvas-container {
                 height: 60vh;
             }
         }
-
-        /* ==================== ANIMATIONS ==================== */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .category {
-            animation: fadeIn 0.3s ease;
-        }
-
-        /* ==================== LOADING ==================== */
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            z-index: 100;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
+    <!-- LANGUAGE SWITCHER -->
+    <div class="language-switcher">
+        <button class="lang-btn active" data-lang="ru">🇷🇺 RU</button>
+        <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
+        <button class="lang-btn" data-lang="lv">🇱🇻 LV</button>
+    </div>
+
     <div class="container">
         <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h1>🎨 Booth Designer</h1>
-                <p>Создайте свой идеальный стенд</p>
+                <h1 data-i18n="title">🎨 Booth Designer</h1>
+                <p data-i18n="subtitle">Создайте свой идеальный стенд</p>
             </div>
 
             <div class="categories">
                 <!-- DIMENSIONS -->
                 <div class="category active">
                     <div class="category-header">
-                        <span><span class="category-icon">📏</span> Размеры</span>
+                        <span><span class="category-icon">📏</span><span data-i18n="dimensions">Размеры</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Длина (м)</label>
+                            <label class="option-label" data-i18n="length">Длина (м)</label>
                             <div class="option-items">
                                 <button class="option-item" data-length="2">2m</button>
                                 <button class="option-item" data-length="3">3m</button>
@@ -374,7 +397,7 @@
                             </div>
                         </div>
                         <div class="option-group">
-                            <label class="option-label">Ширина (м)</label>
+                            <label class="option-label" data-i18n="width">Ширина (м)</label>
                             <div class="option-items">
                                 <button class="option-item" data-width="2">2m</button>
                                 <button class="option-item selected" data-width="3">3m</button>
@@ -384,7 +407,7 @@
                             </div>
                         </div>
                         <div class="option-group">
-                            <label class="option-label">Высота (м)</label>
+                            <label class="option-label" data-i18n="height">Высота (м)</label>
                             <div class="option-items">
                                 <button class="option-item" data-height="2">2m</button>
                                 <button class="option-item selected" data-height="2.5">2.5m</button>
@@ -398,21 +421,21 @@
                 <!-- WALLS -->
                 <div class="category">
                     <div class="category-header">
-                        <span><span class="category-icon">🧱</span> Стены</span>
+                        <span><span class="category-icon">🧱</span><span data-i18n="walls">Стены</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Цвет стен</label>
+                            <label class="option-label" data-i18n="wall_color">Цвет стен</label>
                             <input type="color" id="wallColor" class="color-picker" value="#ffffff">
                         </div>
                         <div class="option-group">
-                            <label class="option-label">Материал</label>
+                            <label class="option-label" data-i18n="material">Материал</label>
                             <div class="option-items">
-                                <button class="option-item selected" data-material="plastic">Пластик</button>
-                                <button class="option-item" data-material="wood">Дерево</button>
-                                <button class="option-item" data-material="metal">Металл</button>
-                                <button class="option-item" data-material="fabric">Ткань</button>
+                                <button class="option-item selected" data-material="plastic" data-i18n="plastic">Пластик</button>
+                                <button class="option-item" data-material="wood" data-i18n="wood">Дерево</button>
+                                <button class="option-item" data-material="metal" data-i18n="metal">Металл</button>
+                                <button class="option-item" data-material="fabric" data-i18n="fabric">Ткань</button>
                             </div>
                         </div>
                     </div>
@@ -421,20 +444,20 @@
                 <!-- FLOOR -->
                 <div class="category">
                     <div class="category-header">
-                        <span><span class="category-icon">🏢</span> Пол</span>
+                        <span><span class="category-icon">🏢</span><span data-i18n="floor">Пол</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Цвет пола</label>
+                            <label class="option-label" data-i18n="floor_color">Цвет пола</label>
                             <input type="color" id="floorColor" class="color-picker" value="#cccccc">
                         </div>
                         <div class="option-group">
-                            <label class="option-label">Тип покрытия</label>
+                            <label class="option-label" data-i18n="floor_type">Тип покрытия</label>
                             <div class="option-items">
-                                <button class="option-item selected" data-floor="carpet">Ковролин</button>
-                                <button class="option-item" data-floor="tile">Плитка</button>
-                                <button class="option-item" data-floor="wood">Паркет</button>
+                                <button class="option-item selected" data-floor="carpet" data-i18n="carpet">Ковролин</button>
+                                <button class="option-item" data-floor="tile" data-i18n="tile">Плитка</button>
+                                <button class="option-item" data-floor="wood" data-i18n="parquet">Паркет</button>
                             </div>
                         </div>
                     </div>
@@ -443,17 +466,17 @@
                 <!-- FURNITURE -->
                 <div class="category">
                     <div class="category-header">
-                        <span><span class="category-icon">🪑</span> Мебель</span>
+                        <span><span class="category-icon">🪑</span><span data-i18n="furniture">Мебель</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Добавить мебель</label>
+                            <label class="option-label" data-i18n="add_furniture">Добавить мебель</label>
                             <div class="option-items">
-                                <button class="option-item" data-furniture="table">Стол</button>
-                                <button class="option-item" data-furniture="chair">Стул</button>
-                                <button class="option-item" data-furniture="counter">Стойка</button>
-                                <button class="option-item" data-furniture="shelf">Полка</button>
+                                <button class="option-item" data-furniture="table" data-i18n="table">Стол</button>
+                                <button class="option-item" data-furniture="chair" data-i18n="chair">Стул</button>
+                                <button class="option-item" data-furniture="counter" data-i18n="counter">Стойка</button>
+                                <button class="option-item" data-furniture="shelf" data-i18n="shelf">Полка</button>
                             </div>
                         </div>
                     </div>
@@ -462,21 +485,23 @@
                 <!-- LIGHTING -->
                 <div class="category">
                     <div class="category-header">
-                        <span><span class="category-icon">💡</span> Освещение</span>
+                        <span><span class="category-icon">💡</span><span data-i18n="lighting">Освещение</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Интенсивность</label>
-                            <input type="range" id="lightIntensity" min="0.3" max="2" step="0.1" value="1" style="width: 100%; cursor: pointer;">
-                            <small id="lightValue" style="color: #999; margin-top: 5px; display: block;">Нормальное</small>
+                            <label class="option-label" data-i18n="intensity">Интенсивность</label>
+                            <div class="slider-container">
+                                <input type="range" id="lightIntensity" min="0.3" max="2" step="0.1" value="1">
+                                <span class="slider-value" id="lightValue">1.0</span>
+                            </div>
                         </div>
                         <div class="option-group">
-                            <label class="option-label">Тип освещения</label>
+                            <label class="option-label" data-i18n="light_type">Тип освещения</label>
                             <div class="option-items">
-                                <button class="option-item selected" data-lighting="warm">Теплое</button>
-                                <button class="option-item" data-lighting="cool">Холодное</button>
-                                <button class="option-item" data-lighting="neutral">Нейтральное</button>
+                                <button class="option-item selected" data-lighting="warm" data-i18n="warm">Теплое</button>
+                                <button class="option-item" data-lighting="cool" data-i18n="cool">Холодное</button>
+                                <button class="option-item" data-lighting="neutral" data-i18n="neutral">Нейтральное</button>
                             </div>
                         </div>
                     </div>
@@ -485,17 +510,17 @@
                 <!-- EQUIPMENT -->
                 <div class="category">
                     <div class="category-header">
-                        <span><span class="category-icon">📺</span> Оборудование</span>
+                        <span><span class="category-icon">📺</span><span data-i18n="equipment">Оборудование</span></span>
                         <span>▼</span>
                     </div>
                     <div class="category-content">
                         <div class="option-group">
-                            <label class="option-label">Добавить оборудование</label>
+                            <label class="option-label" data-i18n="add_equipment">Добавить оборудование</label>
                             <div class="option-items">
-                                <button class="option-item" data-equipment="monitor">Монитор</button>
-                                <button class="option-item" data-equipment="speaker">Динамик</button>
-                                <button class="option-item" data-equipment="camera">Камера</button>
-                                <button class="option-item" data-equipment="banner">Баннер</button>
+                                <button class="option-item" data-equipment="monitor" data-i18n="monitor">Монитор</button>
+                                <button class="option-item" data-equipment="speaker" data-i18n="speaker">Динамик</button>
+                                <button class="option-item" data-equipment="camera" data-i18n="camera">Камера</button>
+                                <button class="option-item" data-equipment="banner" data-i18n="banner">Баннер</button>
                             </div>
                         </div>
                     </div>
@@ -504,11 +529,11 @@
 
             <!-- PRICE SECTION -->
             <div class="price-section">
-                <div class="price-label">Итоговая стоимость</div>
+                <div class="price-label" data-i18n="total_price">Итоговая стоимость</div>
                 <div class="price-value" id="totalPrice">8 900 €</div>
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="saveConfigure()">💾 Сохранить</button>
-                    <button class="btn btn-secondary" onclick="resetConfigure()">🔄 Сброс</button>
+                    <button class="btn btn-primary" onclick="saveConfigure()" data-i18n="save">💾 Сохранить</button>
+                    <button class="btn btn-secondary" onclick="resetConfigure()" data-i18n="reset">🔄 Сброс</button>
                 </div>
             </div>
         </div>
@@ -517,15 +542,176 @@
         <div class="canvas-container">
             <canvas id="canvas"></canvas>
             <div class="canvas-info">
-                <strong>💡 Советы:</strong>
-                🖱️ Вращайте: левая кнопка<br>
-                🔍 Масштаб: колесо мыши<br>
-                ⬆️ Сдвиг: правая кнопка
+                <strong data-i18n="tips">💡 Советы:</strong>
+                <span data-i18n="rotate">🖱️ Вращайте: левая кнопка</span><br>
+                <span data-i18n="zoom">🔍 Масштаб: колесо мыши</span><br>
+                <span data-i18n="pan">⬆️ Сдвиг: правая кнопка</span>
             </div>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="configurator_v2.js"></script>
+    <script>
+        // ========== TRANSLATIONS ==========
+        const translations = {
+            ru: {
+                title: "🎨 Booth Designer",
+                subtitle: "Создайте свой идеальный стенд",
+                dimensions: "Размеры",
+                length: "Длина (м)",
+                width: "Ширина (м)",
+                height: "Высота (м)",
+                walls: "Стены",
+                wall_color: "Цвет стен",
+                material: "Материал",
+                plastic: "Пластик",
+                wood: "Дерево",
+                metal: "Металл",
+                fabric: "Ткань",
+                floor: "Пол",
+                floor_color: "Цвет пола",
+                floor_type: "Тип покрытия",
+                carpet: "Ковролин",
+                tile: "Плитка",
+                parquet: "Паркет",
+                furniture: "Мебель",
+                add_furniture: "Добавить мебель",
+                table: "Стол",
+                chair: "Стул",
+                counter: "Стойка",
+                shelf: "Полка",
+                lighting: "Освещение",
+                intensity: "Интенсивность",
+                light_type: "Тип освещения",
+                warm: "Теплое",
+                cool: "Холодное",
+                neutral: "Нейтральное",
+                equipment: "Оборудование",
+                add_equipment: "Добавить оборудование",
+                monitor: "Монитор",
+                speaker: "Динамик",
+                camera: "Камера",
+                banner: "Баннер",
+                total_price: "Итоговая стоимость",
+                save: "💾 Сохранить",
+                reset: "🔄 Сброс",
+                tips: "💡 Советы:",
+                rotate: "🖱️ Вращайте: левая кнопка",
+                zoom: "🔍 Масштаб: колесо мыши",
+                pan: "⬆️ Сдвиг: правая кнопка"
+            },
+            en: {
+                title: "🎨 Booth Designer",
+                subtitle: "Create your ideal booth",
+                dimensions: "Dimensions",
+                length: "Length (m)",
+                width: "Width (m)",
+                height: "Height (m)",
+                walls: "Walls",
+                wall_color: "Wall Color",
+                material: "Material",
+                plastic: "Plastic",
+                wood: "Wood",
+                metal: "Metal",
+                fabric: "Fabric",
+                floor: "Floor",
+                floor_color: "Floor Color",
+                floor_type: "Floor Type",
+                carpet: "Carpet",
+                tile: "Tile",
+                parquet: "Parquet",
+                furniture: "Furniture",
+                add_furniture: "Add Furniture",
+                table: "Table",
+                chair: "Chair",
+                counter: "Counter",
+                shelf: "Shelf",
+                lighting: "Lighting",
+                intensity: "Intensity",
+                light_type: "Light Type",
+                warm: "Warm",
+                cool: "Cool",
+                neutral: "Neutral",
+                equipment: "Equipment",
+                add_equipment: "Add Equipment",
+                monitor: "Monitor",
+                speaker: "Speaker",
+                camera: "Camera",
+                banner: "Banner",
+                total_price: "Total Price",
+                save: "💾 Save",
+                reset: "🔄 Reset",
+                tips: "💡 Tips:",
+                rotate: "🖱️ Rotate: left click",
+                zoom: "🔍 Zoom: mouse wheel",
+                pan: "⬆️ Pan: right click"
+            },
+            lv: {
+                title: "🎨 Stenda Dizainers",
+                subtitle: "Izveidojiet savu ideālo stendu",
+                dimensions: "Izmēri",
+                length: "Garums (m)",
+                width: "Platums (m)",
+                height: "Augstums (m)",
+                walls: "Sienas",
+                wall_color: "Sienas krāsa",
+                material: "Materiāls",
+                plastic: "Plastmasa",
+                wood: "Koks",
+                metal: "Metāls",
+                fabric: "Audums",
+                floor: "Grīda",
+                floor_color: "Grīdas krāsa",
+                floor_type: "Grīdas tips",
+                carpet: "Paklājs",
+                tile: "Flīzes",
+                parquet: "Parketa",
+                furniture: "Mēbeles",
+                add_furniture: "Pievienot mēbeles",
+                table: "Galds",
+                chair: "Krēsls",
+                counter: "Skaitītājs",
+                shelf: "Plaukts",
+                lighting: "Apgaismojums",
+                intensity: "Intensitāte",
+                light_type: "Apgaismojuma tips",
+                warm: "Silts",
+                cool: "Vēss",
+                neutral: "Neitrāls",
+                equipment: "Aprīkojums",
+                add_equipment: "Pievienot aprīkojumu",
+                monitor: "Monitors",
+                speaker: "Skaļrunis",
+                camera: "Kamera",
+                banner: "Baneris",
+                total_price: "Kopējā cena",
+                save: "💾 Saglabāt",
+                reset: "🔄 Atiestatīt",
+                tips: "💡 Padomi:",
+                rotate: "🖱️ Griezt: kreisais klikšķis",
+                zoom: "🔍 Tālummaiņa: peles ritenis",
+                pan: "⬆️ Pārvietot: labais klikšķis"
+            }
+        };
+
+        let currentLanguage = 'ru';
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+        }
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+        });
+    </script>
+
+    <script src="configurator_v21.js"></script>
 </body>
 </html>
