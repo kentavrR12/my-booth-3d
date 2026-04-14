@@ -951,7 +951,6 @@
     function createChair(x, z) {
         const grp = new THREE.Group();
 
-        // Сиденье
         const seatMat = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.7,
@@ -965,7 +964,6 @@
         seat.receiveShadow = true;
         grp.add(seat);
 
-        // Ножки (конусные, симметричные)
         const legMat = new THREE.MeshStandardMaterial({
             color: 0x4a4a4a,
             roughness: 0.6,
@@ -973,7 +971,7 @@
             envMapIntensity: 0.4
         });
         const legGeom = new THREE.CylinderGeometry(0.035, 0.025, 0.44, 8);
-        const legPositions = [[-0.2, 0.22, -0.18], [0.2, 0.22, -0.18], [-0.2, 0.22, 0.18], [0.2, 0.22, 0.18]];
+        const legPositions = [[-0.21, 0.22, -0.19], [0.21, 0.22, -0.19], [-0.21, 0.22, 0.19], [0.21, 0.22, 0.19]];
         legPositions.forEach(([lx, ly, lz]) => {
             const leg = new THREE.Mesh(legGeom, legMat);
             leg.position.set(lx, ly, lz);
@@ -981,7 +979,6 @@
             grp.add(leg);
         });
 
-        // Спинка (РОВНАЯ, без наклонов)
         const backMat = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.7,
@@ -991,11 +988,10 @@
         const backGeom = new THREE.BoxGeometry(0.48, 0.56, 0.08);
         const back = new THREE.Mesh(backGeom, backMat);
         back.position.set(0, 0.78, -0.24);
-        // УБРАЛ rotation.z = 0.1 - это вызывало перекос!
+        back.rotation.z = 0.1;
         back.castShadow = true;
         grp.add(back);
 
-        // Подлокотники (симметричные, правильно расположенные)
         const armMat = new THREE.MeshStandardMaterial({
             color: 0x4a4a4a,
             roughness: 0.6,
@@ -1004,12 +1000,12 @@
         });
         const armGeom = new THREE.BoxGeometry(0.08, 0.25, 0.06);
         const armLeft = new THREE.Mesh(armGeom, armMat);
-        armLeft.position.set(-0.27, 0.56, -0.02);
+        armLeft.position.set(-0.28, 0.56, 0);
         armLeft.castShadow = true;
         grp.add(armLeft);
 
         const armRight = new THREE.Mesh(armGeom, armMat);
-        armRight.position.set(0.27, 0.56, -0.02);
+        armRight.position.set(0.28, 0.56, 0);
         armRight.castShadow = true;
         grp.add(armRight);
 
