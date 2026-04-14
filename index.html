@@ -951,63 +951,85 @@
     function createChair(x, z) {
     const grp = new THREE.Group();
 
-    const seatMat = new THREE.MeshStandardMaterial({
-        color: 0x3a3a3a,
-        roughness: 0.7,
-        metalness: 0.0,
+    // Материалы
+    const cushionMat = new THREE.MeshStandardMaterial({
+        color: 0x4a4a6a,
+        roughness: 0.6,
+        metalness: 0.05,
+        envMapIntensity: 0.4
+    });
+    const frameMat = new THREE.MeshStandardMaterial({
+        color: 0x2a2a2a,
+        roughness: 0.3,
+        metalness: 0.6,
+        envMapIntensity: 0.7
+    });
+    const woodMat = new THREE.MeshStandardMaterial({
+        color: 0x8b5a2b,
+        roughness: 0.5,
+        metalness: 0.05,
         envMapIntensity: 0.3
     });
-    const seatGeom = new THREE.BoxGeometry(0.52, 0.08, 0.48);
-    const seat = new THREE.Mesh(seatGeom, seatMat);
+
+    // Сиденье
+    const seatGeom = new THREE.BoxGeometry(0.54, 0.08, 0.52);
+    const seat = new THREE.Mesh(seatGeom, cushionMat);
     seat.position.y = 0.46;
     seat.castShadow = true;
     seat.receiveShadow = true;
     grp.add(seat);
 
-    const legMat = new THREE.MeshStandardMaterial({
-        color: 0x4a4a4a,
-        roughness: 0.6,
-        metalness: 0.1,
-        envMapIntensity: 0.4
-    });
-    const legGeom = new THREE.CylinderGeometry(0.035, 0.025, 0.44, 8);
-    const legPositions = [[-0.21, 0.22, -0.19], [0.21, 0.22, -0.19], [-0.21, 0.22, 0.19], [0.21, 0.22, 0.19]];
-    legPositions.forEach(([lx, ly, lz]) => {
-        const leg = new THREE.Mesh(legGeom, legMat);
-        leg.position.set(lx, ly, lz);
+    // Ножки (металлические)
+    const legGeom = new THREE.CylinderGeometry(0.04, 0.035, 0.44, 6);
+    const legPositions = [
+        [-0.22, 0.22, -0.22], [0.22, 0.22, -0.22],
+        [-0.22, 0.22, 0.22], [0.22, 0.22, 0.22]
+    ];
+    legPositions.forEach(pos => {
+        const leg = new THREE.Mesh(legGeom, frameMat);
+        leg.position.set(pos[0], pos[1], pos[2]);
         leg.castShadow = true;
         grp.add(leg);
     });
 
-    const backMat = new THREE.MeshStandardMaterial({
-        color: 0x3a3a3a,
-        roughness: 0.7,
-        metalness: 0.0,
-        envMapIntensity: 0.3
-    });
-    const backGeom = new THREE.BoxGeometry(0.48, 0.56, 0.08);
-    const back = new THREE.Mesh(backGeom, backMat);
-    back.position.set(0, 0.78, -0.24);
-    back.rotation.z = 0;          // ← ИСПРАВЛЕНО: теперь спинка ровная
+    // Спинка (ровная, без наклонов)
+    const backGeom = new THREE.BoxGeometry(0.52, 0.56, 0.06);
+    const back = new THREE.Mesh(backGeom, cushionMat);
+    back.position.set(0, 0.80, -0.27);
     back.castShadow = true;
+    back.receiveShadow = true;
     grp.add(back);
 
-    const armMat = new THREE.MeshStandardMaterial({
-        color: 0x4a4a4a,
-        roughness: 0.6,
-        metalness: 0.1,
-        envMapIntensity: 0.4
-    });
-    const armGeom = new THREE.BoxGeometry(0.08, 0.25, 0.06);
-    const armLeft = new THREE.Mesh(armGeom, armMat);
-    armLeft.position.set(-0.28, 0.56, 0);
+    // Верхняя окантовка спинки (декоративная)
+    const topBarGeom = new THREE.BoxGeometry(0.56, 0.04, 0.08);
+    const topBar = new THREE.Mesh(topBarGeom, woodMat);
+    topBar.position.set(0, 1.06, -0.27);
+    topBar.castShadow = true;
+    grp.add(topBar);
+
+    // Подлокотники (ровные)
+    const armGeom = new THREE.BoxGeometry(0.08, 0.08, 0.48);
+    const armLeft = new THREE.Mesh(armGeom, woodMat);
+    armLeft.position.set(-0.32, 0.68, 0);
     armLeft.castShadow = true;
     grp.add(armLeft);
 
-    const armRight = new THREE.Mesh(armGeom, armMat);
-    armRight.position.set(0.28, 0.56, 0);
+    const armRight = new THREE.Mesh(armGeom, woodMat);
+    armRight.position.set(0.32, 0.68, 0);
     armRight.castShadow = true;
     grp.add(armRight);
+
+    // Вертикальные стойки подлокотников (для красоты)
+    const postGeom = new THREE.BoxGeometry(0.06, 0.24, 0.06);
+    const postLeft = new THREE.Mesh(postGeom, frameMat);
+    postLeft.position.set(-0.32, 0.44, -0.20);
+    postLeft.castShadow = true;
+    grp.add(postLeft);
+    
+    const postRight = new THREE.Mesh(postGeom, frameMat);
+    postRight.position.set(0.32, 0.44, -0.20);
+    postRight.castShadow = true;
+    grp.add(postRight);
 
     grp.position.set(x, 0, z);
     return grp;
