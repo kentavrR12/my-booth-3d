@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Ultra Premium 3D Booth Configurator</title>
+    <title>3D Booth Configurator - Interior Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -238,6 +238,62 @@
             color: #ffffff;
         }
 
+        .rotation-control {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .rotation-btn {
+            background: rgba(100, 150, 200, 0.2);
+            border: 1px solid rgba(100, 150, 200, 0.4);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rotation-btn:hover {
+            background: rgba(100, 150, 200, 0.4);
+            border-color: rgba(100, 150, 200, 0.6);
+        }
+
+        .rotation-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(100, 150, 200, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            margin-top: 8px;
+        }
+
+        .rotation-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .rotation-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
         .price-section {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
             border-radius: 20px;
@@ -335,6 +391,7 @@
             border: 1px solid rgba(255, 255, 255, 0.15);
             font-weight: 500;
             letter-spacing: 0.3px;
+            max-width: 300px;
         }
 
         .selected-info {
@@ -425,7 +482,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h1 id="title">✨ Booth Designer</h1>
-            <p id="subtitle">Ultra Premium Edition</p>
+            <p id="subtitle">Interior Edition</p>
         </div>
 
         <div class="category active">
@@ -515,6 +572,21 @@
         </div>
 
         <div class="category">
+            <div class="category-header"><span id="rotLabel">🔄 Вращение</span><span>▼</span></div>
+            <div class="category-content">
+                <div class="option-group">
+                    <label id="rotInfoLabel" class="option-label">Выберите объект для вращения</label>
+                    <div class="rotation-control">
+                        <button class="rotation-btn" id="rotLeft">↺ -45°</button>
+                        <button class="rotation-btn" id="rotRight">↻ +45°</button>
+                    </div>
+                    <input type="range" id="rotationSlider" class="rotation-slider" min="0" max="360" value="0" disabled>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px;" id="rotAngleDisplay">Угол: 0°</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="category">
             <div class="category-header"><span id="lightLabel">💡 Освещение</span><span>▼</span></div>
             <div class="category-content">
                 <div class="option-group">
@@ -554,13 +626,11 @@
     <div class="canvas-container">
         <canvas id="canvas"></canvas>
         <div class="info-panel" id="infoText">
-            🖱️ Клик на объект → выделить | ПКМ → панорама | Колесо → зум
+            🖱️ Клик на объект → выделить | ПКМ → панорама | Колесо → зум | R → вращать
         </div>
         <div id="selectedInfo" style="display:none;"></div>
     </div>
 </div>
-
-<input type="file" id="configFileInput" accept=".json" style="display:none">
 
 <script>
     if (typeof THREE === 'undefined') {
@@ -570,11 +640,12 @@
 
     const translations = {
         ru: {
-            title:"✨ Booth Designer", subtitle:"Ultra Premium Edition",
+            title:"✨ Booth Designer", subtitle:"Interior Edition",
             dimLabel:"📐 Размеры", lenLabel:"Длина (м)", widLabel:"Ширина (м)", heiLabel:"Высота (м)",
             wallsLabel:"🧱 Стены", wallsCountLabel:"Количество стен", wallColorLabel:"Цвет стен", wallMatLabel:"Материал",
             floorLabel:"🏢 Пол", floorColorLabel:"Цвет пола", floorTypeLabel:"Тип покрытия",
-            furnLabel:"🪑 Мебель", lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
+            furnLabel:"🪑 Мебель", rotLabel:"🔄 Вращение", rotInfoLabel:"Выберите объект для вращения",
+            lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
             equipLabel:"📺 Оборудование", totalLabel:"Итоговая стоимость",
             plastic:"Пластик", wood:"Дерево", metal:"Металл", fabric:"Ткань",
             carpet:"Ковролин", tile:"Плитка", parquet:"Паркет",
@@ -584,11 +655,12 @@
             oneWall:"1 стена", twoWalls:"2 стены", threeWalls:"3 стены"
         },
         en: {
-            title:"✨ Booth Designer", subtitle:"Ultra Premium Edition",
+            title:"✨ Booth Designer", subtitle:"Interior Edition",
             dimLabel:"📐 Dimensions", lenLabel:"Length (m)", widLabel:"Width (m)", heiLabel:"Height (m)",
             wallsLabel:"🧱 Walls", wallsCountLabel:"Number of walls", wallColorLabel:"Wall Color", wallMatLabel:"Material",
             floorLabel:"🏢 Floor", floorColorLabel:"Floor Color", floorTypeLabel:"Floor Type",
-            furnLabel:"🪑 Furniture", lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
+            furnLabel:"🪑 Furniture", rotLabel:"🔄 Rotation", rotInfoLabel:"Select object to rotate",
+            lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
             equipLabel:"📺 Equipment", totalLabel:"Total Price",
             plastic:"Plastic", wood:"Wood", metal:"Metal", fabric:"Fabric",
             carpet:"Carpet", tile:"Tile", parquet:"Parquet",
@@ -598,11 +670,12 @@
             oneWall:"1 wall", twoWalls:"2 walls", threeWalls:"3 walls"
         },
         lv: {
-            title:"✨ Stenda Dizainers", subtitle:"Ultra Premium Edition",
+            title:"✨ Stenda Dizainers", subtitle:"Interior Edition",
             dimLabel:"📐 Izmēri", lenLabel:"Garums (m)", widLabel:"Platums (m)", heiLabel:"Augstums (m)",
             wallsLabel:"🧱 Sienas", wallsCountLabel:"Sienu skaits", wallColorLabel:"Sienu krāsa", wallMatLabel:"Materiāls",
             floorLabel:"🏢 Grīda", floorColorLabel:"Grīdas krāsa", floorTypeLabel:"Grīdas tips",
-            furnLabel:"🪑 Mēbeles", lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
+            furnLabel:"🪑 Mēbeles", rotLabel:"🔄 Rotācija", rotInfoLabel:"Izvēlieties objektu rotācijai",
+            lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
             equipLabel:"📺 Aprīkojums", totalLabel:"Kopējā cena",
             plastic:"Plastmasa", wood:"Koks", metal:"Metāls", fabric:"Audums",
             carpet:"Paklājs", tile:"Flīzes", parquet:"Parkets",
@@ -631,16 +704,13 @@
         document.getElementById('floorColorLabel').innerText = t.floorColorLabel;
         document.getElementById('floorTypeLabel').innerText = t.floorTypeLabel;
         document.getElementById('furnLabel').innerHTML = t.furnLabel;
+        document.getElementById('rotLabel').innerHTML = t.rotLabel;
+        document.getElementById('rotInfoLabel').innerText = t.rotInfoLabel;
         document.getElementById('lightLabel').innerHTML = t.lightLabel;
         document.getElementById('lightTypeLabel').innerText = t.lightTypeLabel;
         document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
         document.getElementById('equipLabel').innerHTML = t.equipLabel;
         document.getElementById('totalLabel').innerText = t.totalLabel;
-        document.querySelectorAll('[data-wallmat]').forEach(btn => { if(t[btn.dataset.wallmat]) btn.innerText = t[btn.dataset.wallmat]; });
-        document.querySelectorAll('[data-floortype]').forEach(btn => { if(t[btn.dataset.floortype]) btn.innerText = t[btn.dataset.floortype]; });
-        document.querySelectorAll('[data-lighttype]').forEach(btn => { if(t[btn.dataset.lighttype]) btn.innerText = t[btn.dataset.lighttype]; });
-        const wallsCountBtns = document.querySelectorAll('[data-walls]');
-        if(wallsCountBtns.length===3){ wallsCountBtns[0].innerText = t.oneWall; wallsCountBtns[1].innerText = t.twoWalls; wallsCountBtns[2].innerText = t.threeWalls; }
     }
 
     let config = {
@@ -833,7 +903,6 @@
     function createTable(x, z) {
         const grp = new THREE.Group();
         
-        // Стеклянная столешница
         const topMat = new THREE.MeshStandardMaterial({
             color: 0xf5f5f5,
             roughness: 0.15,
@@ -849,7 +918,6 @@
         top.receiveShadow = true;
         grp.add(top);
 
-        // Металлическое основание (X-образное)
         const metalMat = new THREE.MeshStandardMaterial({
             color: 0x2a2a2a,
             roughness: 0.2,
@@ -857,7 +925,6 @@
             envMapIntensity: 1.0
         });
 
-        // Две диагональные ноги
         const legGeom = new THREE.BoxGeometry(0.08, 0.75, 0.04);
         const leg1 = new THREE.Mesh(legGeom, metalMat);
         leg1.position.set(-0.5, 0.38, 0);
@@ -871,7 +938,6 @@
         leg2.castShadow = true;
         grp.add(leg2);
 
-        // Горизонтальная перекладина
         const crossGeom = new THREE.BoxGeometry(1.0, 0.04, 0.04);
         const cross = new THREE.Mesh(crossGeom, metalMat);
         cross.position.y = 0.15;
@@ -885,7 +951,6 @@
     function createChair(x, z) {
         const grp = new THREE.Group();
 
-        // Сиденье с подушкой
         const seatMat = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.7,
@@ -899,7 +964,6 @@
         seat.receiveShadow = true;
         grp.add(seat);
 
-        // Конусные ножки (тонкие внизу, толще вверху)
         const legMat = new THREE.MeshStandardMaterial({
             color: 0x4a4a4a,
             roughness: 0.6,
@@ -915,7 +979,6 @@
             grp.add(leg);
         });
 
-        // Спинка с изгибом
         const backMat = new THREE.MeshStandardMaterial({
             color: 0x3a3a3a,
             roughness: 0.7,
@@ -925,11 +988,10 @@
         const backGeom = new THREE.BoxGeometry(0.48, 0.56, 0.08);
         const back = new THREE.Mesh(backGeom, backMat);
         back.position.set(0, 0.78, -0.24);
-        back.rotation.z = 0.1; // Небольшой наклон
+        back.rotation.z = 0.1;
         back.castShadow = true;
         grp.add(back);
 
-        // Подлокотники
         const armMat = new THREE.MeshStandardMaterial({
             color: 0x4a4a4a,
             roughness: 0.6,
@@ -954,7 +1016,6 @@
     function createCounter(x, z) {
         const grp = new THREE.Group();
 
-        // Основной корпус
         const bodyMat = new THREE.MeshStandardMaterial({
             color: 0xd4b896,
             roughness: 0.4,
@@ -968,7 +1029,6 @@
         body.receiveShadow = true;
         grp.add(body);
 
-        // Столешница с глянцем
         const topMat = new THREE.MeshStandardMaterial({
             color: 0xffffff,
             roughness: 0.2,
@@ -981,7 +1041,6 @@
         top.castShadow = true;
         grp.add(top);
 
-        // LED-подсветка (тонкая полоса)
         const ledMat = new THREE.MeshStandardMaterial({
             color: 0x4466ff,
             emissive: 0x4466ff,
@@ -1001,7 +1060,6 @@
     function createShelf(x, z) {
         const grp = new THREE.Group();
 
-        // Доска полки
         const boardMat = new THREE.MeshStandardMaterial({
             color: 0xaa8866,
             roughness: 0.5,
@@ -1015,7 +1073,6 @@
         board.receiveShadow = true;
         grp.add(board);
 
-        // Кронштейны
         const bracketMat = new THREE.MeshStandardMaterial({
             color: 0x555555,
             roughness: 0.4,
@@ -1040,7 +1097,6 @@
     function createMonitor(x, z) {
         const grp = new THREE.Group();
 
-        // Рамка монитора (ультратонкая)
         const frameMat = new THREE.MeshStandardMaterial({
             color: 0x0a0a0a,
             roughness: 0.3,
@@ -1053,7 +1109,6 @@
         frame.castShadow = true;
         grp.add(frame);
 
-        // Экран с подсветкой
         const screenMat = new THREE.MeshStandardMaterial({
             color: 0x0a0a1a,
             emissive: 0x1a3a6a,
@@ -1067,7 +1122,6 @@
         screen.castShadow = true;
         grp.add(screen);
 
-        // Подставка (овальная)
         const baseMat = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.4,
@@ -1082,7 +1136,6 @@
         base.receiveShadow = true;
         grp.add(base);
 
-        // Шея подставки
         const neckGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.8, 12);
         const neck = new THREE.Mesh(neckGeom, baseMat);
         neck.position.y = 0.42;
@@ -1096,7 +1149,6 @@
     function createSpeaker(x, z) {
         const grp = new THREE.Group();
 
-        // Корпус динамика
         const bodyMat = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.6,
@@ -1110,7 +1162,6 @@
         body.receiveShadow = true;
         grp.add(body);
 
-        // Решётка динамика (сетка)
         const grillMat = new THREE.MeshStandardMaterial({
             color: 0x0a0a0a,
             roughness: 0.8,
@@ -1130,7 +1181,6 @@
     function createCamera(x, z) {
         const grp = new THREE.Group();
 
-        // Купол камеры
         const domeMat = new THREE.MeshStandardMaterial({
             color: 0xcccccc,
             roughness: 0.3,
@@ -1143,7 +1193,6 @@
         dome.castShadow = true;
         grp.add(dome);
 
-        // Линза
         const lensMat = new THREE.MeshStandardMaterial({
             color: 0x1a1a1a,
             roughness: 0.1,
@@ -1155,7 +1204,6 @@
         lens.position.y = 1.1;
         grp.add(lens);
 
-        // LED-индикатор
         const ledMat = new THREE.MeshStandardMaterial({
             color: 0xff3333,
             emissive: 0xff3333,
@@ -1175,7 +1223,6 @@
     function createBanner(x, z) {
         const grp = new THREE.Group();
 
-        // Основание
         const baseMat = new THREE.MeshStandardMaterial({
             color: 0x555555,
             roughness: 0.4,
@@ -1189,14 +1236,12 @@
         base.receiveShadow = true;
         grp.add(base);
 
-        // Стойка (металлическая труба)
         const poleGeom = new THREE.CylinderGeometry(0.02, 0.022, 2.0, 12);
         const pole = new THREE.Mesh(poleGeom, baseMat);
         pole.position.y = 1.05;
         pole.castShadow = true;
         grp.add(pole);
 
-        // Баннер с градиентом
         const bannerMat = new THREE.MeshStandardMaterial({
             color: 0x4466ff,
             roughness: 0.8,
@@ -1210,7 +1255,6 @@
         banner.castShadow = true;
         grp.add(banner);
 
-        // Верхняя перекладина
         const barGeom = new THREE.CylinderGeometry(0.025, 0.025, 1.0, 8);
         const bar = new THREE.Mesh(barGeom, baseMat);
         bar.position.set(0, 2.15, 0);
@@ -1239,6 +1283,7 @@
             obj.userData.itemId = id;
             obj.userData.itemType = type;
             obj.userData.isSelectableGroup = true;
+            obj.userData.rotation = 0;
             obj.traverse(child => {
                 if(child.isMesh) {
                     child.userData.selectableGroupId = id;
@@ -1271,6 +1316,85 @@
                 }
             }
         });
+    }
+
+    function createExhibitionHall() {
+        const hallGroup = new THREE.Group();
+
+        // Потолок
+        const ceilingMat = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            roughness: 0.7,
+            metalness: 0.1,
+            envMapIntensity: 0.3
+        });
+        const ceilingGeom = new THREE.PlaneGeometry(50, 50);
+        const ceiling = new THREE.Mesh(ceilingGeom, ceilingMat);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = 5;
+        ceiling.receiveShadow = true;
+        hallGroup.add(ceiling);
+
+        // Фермы на потолке (металлические балки)
+        const fermaGeom = new THREE.BoxGeometry(0.3, 0.3, 40);
+        const fermaMat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            roughness: 0.4,
+            metalness: 0.7,
+            envMapIntensity: 0.8
+        });
+        for(let i = -3; i <= 3; i++) {
+            const ferma = new THREE.Mesh(fermaGeom, fermaMat);
+            ferma.position.set(i * 8, 4.8, 0);
+            ferma.castShadow = true;
+            hallGroup.add(ferma);
+        }
+
+        // Стены павильона (дальний фон)
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0x666666,
+            roughness: 0.8,
+            metalness: 0.0,
+            envMapIntensity: 0.2
+        });
+        const backWallGeom = new THREE.PlaneGeometry(50, 5);
+        const backWall = new THREE.Mesh(backWallGeom, wallMat);
+        backWall.position.set(0, 2.5, -25);
+        backWall.receiveShadow = true;
+        hallGroup.add(backWall);
+
+        const leftWallGeom = new THREE.PlaneGeometry(50, 5);
+        const leftWall = new THREE.Mesh(leftWallGeom, wallMat);
+        leftWall.rotation.y = Math.PI / 2;
+        leftWall.position.set(-25, 2.5, 0);
+        leftWall.receiveShadow = true;
+        hallGroup.add(leftWall);
+
+        const rightWallGeom = new THREE.PlaneGeometry(50, 5);
+        const rightWall = new THREE.Mesh(rightWallGeom, wallMat);
+        rightWall.rotation.y = -Math.PI / 2;
+        rightWall.position.set(25, 2.5, 0);
+        rightWall.receiveShadow = true;
+        hallGroup.add(rightWall);
+
+        // Промышленные светильники на потолке
+        const lightFixtureMat = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            roughness: 0.5,
+            metalness: 0.8,
+            envMapIntensity: 0.6
+        });
+        const fixtureGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+        for(let i = -2; i <= 2; i++) {
+            for(let j = -2; j <= 2; j++) {
+                const fixture = new THREE.Mesh(fixtureGeom, lightFixtureMat);
+                fixture.position.set(i * 12, 4.9, j * 12);
+                fixture.castShadow = true;
+                hallGroup.add(fixture);
+            }
+        }
+
+        return hallGroup;
     }
 
     function rebuildScene() {
@@ -1394,7 +1518,7 @@
 
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050b1a);
-        scene.fog = new THREE.FogExp2(0x050b1a, 0.015);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
 
         camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
 
@@ -1406,39 +1530,30 @@
         renderer.toneMappingExposure = 1.2;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
-        // Starfield background
-        const starGeometry = new THREE.BufferGeometry();
-        const starPos = [];
-        for(let i = 0; i < 1500; i++) {
-            starPos.push((Math.random() - 0.5) * 200, (Math.random() - 0.5) * 100, (Math.random() - 0.5) * 80 - 40);
-        }
-        starGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
-        scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 })));
+        // Добавляем интерьер павильона
+        const hallGroup = createExhibitionHall();
+        scene.add(hallGroup);
 
         // Lighting setup
-        scene.add(new THREE.AmbientLight(0x505080, 0.6));
+        scene.add(new THREE.AmbientLight(0x505080, 0.8));
 
-        const mainLight = new THREE.DirectionalLight(0xfff5e0, 1.5);
-        mainLight.position.set(6, 12, 5);
+        const mainLight = new THREE.DirectionalLight(0xfff5e0, 1.8);
+        mainLight.position.set(8, 14, 6);
         mainLight.castShadow = true;
         mainLight.shadow.mapSize.width = 2048;
         mainLight.shadow.mapSize.height = 2048;
-        mainLight.shadow.camera.far = 30;
-        mainLight.shadow.camera.left = -15;
-        mainLight.shadow.camera.right = 15;
-        mainLight.shadow.camera.top = 15;
-        mainLight.shadow.camera.bottom = -15;
+        mainLight.shadow.camera.far = 40;
+        mainLight.shadow.camera.left = -20;
+        mainLight.shadow.camera.right = 20;
+        mainLight.shadow.camera.top = 20;
+        mainLight.shadow.camera.bottom = -20;
         mainLight.shadow.bias = -0.0005;
-        mainLight.shadow.radius = 3;
+        mainLight.shadow.radius = 4;
         scene.add(mainLight);
 
-        const fillLight = new THREE.DirectionalLight(0x8899ff, 0.4);
-        fillLight.position.set(-5, 8, -5);
+        const fillLight = new THREE.DirectionalLight(0x8899ff, 0.5);
+        fillLight.position.set(-6, 10, -6);
         scene.add(fillLight);
-
-        const pointLight = new THREE.PointLight(0x4466cc, 0.5, 20);
-        pointLight.position.set(-3, 4, -3);
-        scene.add(pointLight);
 
         boothGroup = new THREE.Group();
         scene.add(boothGroup);
@@ -1449,6 +1564,7 @@
         canvas.addEventListener('mouseup', onMouseUp);
         canvas.addEventListener('wheel', onWheel, { passive: false });
         canvas.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', onKeyDown);
 
         animate();
     }
@@ -1475,8 +1591,11 @@
                 const p = getPlaneIntersect(e, dragPlane);
                 if(p) dragOffsetVec.copy(selectedObj.position).sub(p);
                 highlightObject(selectedObj, true);
-                document.getElementById('selectedInfo').innerText = `✓ ${selectedObj.userData.itemType.toUpperCase()}`;
+                document.getElementById('selectedInfo').innerText = `✓ ${selectedObj.userData.itemType.toUpperCase()} | Нажми R для вращения`;
                 document.getElementById('selectedInfo').style.display = 'block';
+                document.getElementById('rotationSlider').disabled = false;
+                document.getElementById('rotationSlider').value = selectedObj.userData.rotation || 0;
+                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(selectedObj.userData.rotation || 0)}°`;
                 return;
             } else {
                 if(selectedObj) {
@@ -1484,6 +1603,7 @@
                     selectedObj = null;
                     selectedId = null;
                     document.getElementById('selectedInfo').style.display = 'none';
+                    document.getElementById('rotationSlider').disabled = true;
                 }
                 isOrbiting = true;
             }
@@ -1541,6 +1661,18 @@
         e.preventDefault();
         radius += e.deltaY * 0.01;
         radius = Math.max(3.0, Math.min(16, radius));
+    }
+
+    function onKeyDown(e) {
+        if(e.key.toLowerCase() === 'r' && selectedObj) {
+            e.preventDefault();
+            const currentRot = selectedObj.userData.rotation || 0;
+            const newRot = (currentRot + 45) % 360;
+            selectedObj.userData.rotation = newRot;
+            selectedObj.rotation.y = (newRot * Math.PI) / 180;
+            document.getElementById('rotationSlider').value = newRot;
+            document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
+        }
     }
 
     function onResize() {
@@ -1685,6 +1817,7 @@
             selectedObj = null;
             selectedId = null;
             document.getElementById('selectedInfo').style.display = 'none';
+            document.getElementById('rotationSlider').disabled = true;
         }
         config = {
             dims: { length: 4, width: 3, height: 2.5 },
@@ -1772,6 +1905,34 @@
                 config.lampCount--;
                 document.getElementById('lampCountVal').innerText = config.lampCount;
                 rebuildScene();
+            }
+        });
+        document.getElementById('rotLeft').addEventListener('click', () => {
+            if(selectedObj) {
+                const currentRot = selectedObj.userData.rotation || 0;
+                const newRot = (currentRot - 45 + 360) % 360;
+                selectedObj.userData.rotation = newRot;
+                selectedObj.rotation.y = (newRot * Math.PI) / 180;
+                document.getElementById('rotationSlider').value = newRot;
+                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
+            }
+        });
+        document.getElementById('rotRight').addEventListener('click', () => {
+            if(selectedObj) {
+                const currentRot = selectedObj.userData.rotation || 0;
+                const newRot = (currentRot + 45) % 360;
+                selectedObj.userData.rotation = newRot;
+                selectedObj.rotation.y = (newRot * Math.PI) / 180;
+                document.getElementById('rotationSlider').value = newRot;
+                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
+            }
+        });
+        document.getElementById('rotationSlider').addEventListener('input', e => {
+            if(selectedObj) {
+                const angle = parseFloat(e.target.value);
+                selectedObj.userData.rotation = angle;
+                selectedObj.rotation.y = (angle * Math.PI) / 180;
+                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(angle)}°`;
             }
         });
         document.getElementById('saveBtn').addEventListener('click', saveToFile);
