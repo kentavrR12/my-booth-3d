@@ -3,14 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Booth Configurator | Drag & Drop + Lighting</title>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
-        }
-    </script>
+    <title>3D Booth Configurator</title>
     <style>
         * {
             margin: 0;
@@ -287,7 +280,7 @@
         .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
         .btn-primary:hover, .btn-secondary:hover { transform: translateY(-2px); filter: brightness(1.05); }
 
-        .canvas-container { flex: 1; position: relative; }
+        .canvas-container { flex: 1; position: relative; background: #050b1a; }
 
         #canvas { width: 100%; height: 100%; display: block; }
 
@@ -303,20 +296,17 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
 
-        /* Tooltip при выборе объекта */
-        .selected-tooltip {
+        .loading-message {
             position: absolute;
-            top: 20px; right: 20px;
-            background: rgba(102,126,234,0.85);
-            backdrop-filter: blur(8px);
-            padding: 8px 18px;
-            border-radius: 40px;
-            font-size: 13px;
-            font-weight: 600;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 16px;
             pointer-events: none;
-            border: 1px solid rgba(255,255,255,0.3);
-            display: none;
-            transition: opacity 0.2s;
+            z-index: 50;
         }
 
         @media (max-width: 768px) {
@@ -349,7 +339,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h1 id="title">🎨 Booth Designer</h1>
-            <p id="subtitle">Перетаскивайте объекты левой кнопкой</p>
+            <p id="subtitle">Клик по объекту — выделить и перетащить</p>
         </div>
 
         <div class="category active">
@@ -472,1179 +462,818 @@
     <div class="canvas-container">
         <canvas id="canvas"></canvas>
         <div class="info-panel" id="infoText">
-            🖱️ Клик по объекту → выделить и тащить | ЛКМ по фону → вращать | ПКМ → панорама
+            🖱️ Клик по объекту → выделить+тащить | ЛКМ по фону → вращать | ПКМ → панорама
         </div>
-        <div class="selected-tooltip" id="selectedTooltip">✋ Перетаскивайте объект</div>
     </div>
 </div>
 
-<script type="module">
-    import * as THREE from 'three';
-
-    // -------------------- ПЕРЕВОДЫ --------------------
-    const translations = {
-        ru: {
-            title:"🎨 Booth Designer", subtitle:"Клик по объекту — выделить и перетащить",
-            dimLabel:"📐 Размеры", lenLabel:"Длина (м)", widLabel:"Ширина (м)", heiLabel:"Высота (м)",
-            wallsLabel:"🧱 Стены", wallsCountLabel:"Количество стен", wallColorLabel:"Цвет стен", wallMatLabel:"Материал",
-            floorLabel:"🏢 Пол", floorColorLabel:"Цвет пола", floorTypeLabel:"Тип покрытия",
-            furnLabel:"🪑 Мебель", lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
-            equipLabel:"📺 Оборудование", totalLabel:"Итоговая стоимость",
-            plastic:"Пластик", wood:"Дерево", metal:"Металл", fabric:"Ткань",
-            carpet:"Ковролин", tile:"Плитка", parquet:"Паркет",
-            warm:"Тёплый", cool:"Холодный", neutral:"Нейтральный",
-            table:"Стол", chair:"Стул", counter:"Стойка", shelf:"Полка",
-            monitor:"Монитор", speaker:"Динамик", camera:"Камера", banner:"Баннер",
-            oneWall:"1 стена", twoWalls:"2 стены", threeWalls:"3 стены"
-        },
-        en: {
-            title:"🎨 Booth Designer", subtitle:"Click object to select & drag",
-            dimLabel:"📐 Dimensions", lenLabel:"Length (m)", widLabel:"Width (m)", heiLabel:"Height (m)",
-            wallsLabel:"🧱 Walls", wallsCountLabel:"Number of walls", wallColorLabel:"Wall Color", wallMatLabel:"Material",
-            floorLabel:"🏢 Floor", floorColorLabel:"Floor Color", floorTypeLabel:"Floor Type",
-            furnLabel:"🪑 Furniture", lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
-            equipLabel:"📺 Equipment", totalLabel:"Total Price",
-            plastic:"Plastic", wood:"Wood", metal:"Metal", fabric:"Fabric",
-            carpet:"Carpet", tile:"Tile", parquet:"Parquet",
-            warm:"Warm", cool:"Cool", neutral:"Neutral",
-            table:"Table", chair:"Chair", counter:"Counter", shelf:"Shelf",
-            monitor:"Monitor", speaker:"Speaker", camera:"Camera", banner:"Banner",
-            oneWall:"1 wall", twoWalls:"2 walls", threeWalls:"3 walls"
-        },
-        lv: {
-            title:"🎨 Stenda Dizainers", subtitle:"Klikšķis uz objekta — izvēlēties un vilkt",
-            dimLabel:"📐 Izmēri", lenLabel:"Garums (m)", widLabel:"Platums (m)", heiLabel:"Augstums (m)",
-            wallsLabel:"🧱 Sienas", wallsCountLabel:"Sienu skaits", wallColorLabel:"Sienu krāsa", wallMatLabel:"Materiāls",
-            floorLabel:"🏢 Grīda", floorColorLabel:"Grīdas krāsa", floorTypeLabel:"Grīdas tips",
-            furnLabel:"🪑 Mēbeles", lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
-            equipLabel:"📺 Aprīkojums", totalLabel:"Kopējā cena",
-            plastic:"Plastmasa", wood:"Koks", metal:"Metāls", fabric:"Audums",
-            carpet:"Paklājs", tile:"Flīzes", parquet:"Parkets",
-            warm:"Silts", cool:"Vēss", neutral:"Neitrāls",
-            table:"Galds", chair:"Krēsls", counter:"Skaitītājs", shelf:"Plaukts",
-            monitor:"Monitors", speaker:"Skaļrunis", camera:"Kamera", banner:"Baneris",
-            oneWall:"1 siena", twoWalls:"2 sienas", threeWalls:"3 sienas"
-        }
+<script>
+    // ============ ИНИЦИАЛИЗАЦИЯ THREE.JS ============
+    // Загружаем Three.js динамически для гарантированной загрузки
+    
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/three@0.128.0/build/three.min.js';
+    script.onload = () => {
+        console.log('✅ Three.js loaded successfully');
+        initializeApp();
     };
-
-    let currentLang = 'ru';
-
-    function applyLanguage() {
-        const t = translations[currentLang];
-        document.getElementById('title').innerText = t.title;
-        document.getElementById('subtitle').innerText = t.subtitle;
-        document.getElementById('dimLabel').innerHTML = t.dimLabel;
-        document.getElementById('lenLabel').innerText = t.lenLabel;
-        document.getElementById('widLabel').innerText = t.widLabel;
-        document.getElementById('heiLabel').innerText = t.heiLabel;
-        document.getElementById('wallsLabel').innerHTML = t.wallsLabel;
-        document.getElementById('wallsCountLabel').innerText = t.wallsCountLabel;
-        document.getElementById('wallColorLabel').innerText = t.wallColorLabel;
-        document.getElementById('wallMatLabel').innerText = t.wallMatLabel;
-        document.getElementById('floorLabel').innerHTML = t.floorLabel;
-        document.getElementById('floorColorLabel').innerText = t.floorColorLabel;
-        document.getElementById('floorTypeLabel').innerText = t.floorTypeLabel;
-        document.getElementById('furnLabel').innerHTML = t.furnLabel;
-        document.getElementById('lightLabel').innerHTML = t.lightLabel;
-        document.getElementById('lightTypeLabel').innerText = t.lightTypeLabel;
-        document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
-        document.getElementById('equipLabel').innerHTML = t.equipLabel;
-        document.getElementById('totalLabel').innerText = t.totalLabel;
-        document.getElementById('infoText').innerHTML = "🖱️ Клик по объекту → выделить+тащить | ЛКМ по фону → вращать | ПКМ → панорама";
-        document.querySelectorAll('[data-wallmat]').forEach(btn => { if(t[btn.dataset.wallmat]) btn.innerText = t[btn.dataset.wallmat]; });
-        document.querySelectorAll('[data-floortype]').forEach(btn => { if(t[btn.dataset.floortype]) btn.innerText = t[btn.dataset.floortype]; });
-        document.querySelectorAll('[data-lighttype]').forEach(btn => { if(t[btn.dataset.lighttype]) btn.innerText = t[btn.dataset.lighttype]; });
-        const wallsCountBtns = document.querySelectorAll('[data-walls]');
-        if(wallsCountBtns.length===3){ wallsCountBtns[0].innerText = t.oneWall; wallsCountBtns[1].innerText = t.twoWalls; wallsCountBtns[2].innerText = t.threeWalls; }
-        updateFurnitureUITexts();
-        updateEquipmentUITexts();
-    }
-
-    function updateFurnitureUITexts() {
-        const t = translations[currentLang];
-        ['table','chair','counter','shelf'].forEach(type => {
-            const label = document.querySelector(`#furnitureUI .option-label[data-type="${type}"]`);
-            if(label && t[type]) label.innerText = t[type];
-        });
-    }
-
-    function updateEquipmentUITexts() {
-        const t = translations[currentLang];
-        ['monitor','speaker','camera','banner'].forEach(type => {
-            const label = document.querySelector(`#equipmentUI .option-label[data-type="${type}"]`);
-            if(label && t[type]) label.innerText = t[type];
-        });
-    }
-
-    // -------------------- КОНФИГУРАЦИЯ --------------------
-    let config = {
-        dims: { length:4, width:3, height:2.5 },
-        wallsCount: 3,
-        wallColor: '#ffffff',
-        wallMaterial: 'plastic',
-        floorColor: '#cccccc',
-        floorType: 'carpet',
-        lightType: 'warm',
-        lampCount: 2,
-        furniture: { table:0, chair:0, counter:0, shelf:0 },
-        equipment: { monitor:0, speaker:0, camera:0, banner:0 },
-        items: []
+    script.onerror = () => {
+        console.error('❌ Failed to load Three.js');
+        alert('Ошибка загрузки Three.js. Проверьте интернет-соединение.');
     };
-    let nextId = 1;
-    const prices = {
-        baseSqm: 120,
-        wallMat: { plastic:30, wood:80, metal:110, fabric:45 },
-        floor: { carpet:25, tile:35, wood:55 },
-        furniture: { table:180, chair:85, counter:320, shelf:210 },
-        equipment: { monitor:650, speaker:220, camera:480, banner:130 },
-        lamp: 50
-    };
-
-    // -------------------- 3D ГЛОБАЛЬНЫЕ --------------------
-    let scene, camera, renderer, boothGroup;
-    let orbitX = 0.8, orbitY = 0.5, radius = 7;
-    let center = new THREE.Vector3(0, 1.2, 0);
-    let panX = 0, panY = 0, panZ = 0;
-
-    // Состояние мыши / перетаскивания
-    let isOrbiting = false;
-    let isPanning = false;
-    let isDraggingObj = false;
-    let lastMousePos = { x:0, y:0 };
-
-    // Выбранный объект
-    let selectedObj = null;
-    let selectedId = null;
-    let dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
-    let dragOffsetVec = new THREE.Vector3();
-
-    let itemMap = new Map();
-    let lamps = [];
-    let originalMaterials = new Map(); // mesh -> original material clone info
-
-    // -------------------- ТЕКСТУРЫ --------------------
-    function createWoodTexture() {
-        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#c7a47b'; ctx.fillRect(0,0,512,512);
-        for(let i=0;i<200;i++){
-            ctx.beginPath(); ctx.moveTo(i*20,0); ctx.lineTo(i*20+10,512); ctx.lineTo(i*20-10,512);
-            ctx.fillStyle='#a57c52'; ctx.fill();
-        }
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2,2);
-        return tex;
-    }
-
-    function createTileTexture() {
-        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle='#aaaaaa'; ctx.fillRect(0,0,512,512);
-        ctx.strokeStyle='#666'; ctx.lineWidth=10;
-        for(let i=0;i<8;i++){
-            ctx.beginPath(); ctx.moveTo(i*64,0); ctx.lineTo(i*64,512); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0,i*64); ctx.lineTo(512,i*64); ctx.stroke();
-        }
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4,4);
-        return tex;
-    }
-
-    function createParquetTexture() {
-        const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle='#b87c4f'; ctx.fillRect(0,0,512,512);
-        for(let i=0;i<20;i++){ ctx.fillStyle='#9b5e2e'; ctx.fillRect(i*50,0,20,512); }
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4,4);
-        return tex;
-    }
-
-    function getWallMaterial() {
-        const color = new THREE.Color(config.wallColor);
-        switch(config.wallMaterial){
-            case 'wood': return new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness:0.6, metalness:0.1 });
-            case 'metal': return new THREE.MeshStandardMaterial({ color, roughness:0.2, metalness:0.9 });
-            case 'fabric': return new THREE.MeshStandardMaterial({ color, roughness:0.9, metalness:0 });
-            default: return new THREE.MeshStandardMaterial({ color, roughness:0.3, metalness:0.1 });
-        }
-    }
-
-    function getFloorMaterial() {
-        const color = new THREE.Color(config.floorColor);
-        switch(config.floorType){
-            case 'tile': return new THREE.MeshStandardMaterial({ map: createTileTexture(), roughness:0.4, metalness:0.05 });
-            case 'wood': return new THREE.MeshStandardMaterial({ map: createParquetTexture(), roughness:0.7, metalness:0.05 });
-            default: return new THREE.MeshStandardMaterial({ color, roughness:0.9, metalness:0 });
-        }
-    }
-
-    // -------------------- СОЗДАНИЕ 3D ОБЪЕКТОВ (УЛУЧШЕННЫЕ МОДЕЛИ) --------------------
-
-    function makeMat(color, roughness=0.5, metalness=0.1) {
-        return new THREE.MeshStandardMaterial({ color, roughness, metalness });
-    }
-
-    /**
-     * СТОЛ — реалистичная модель с 4 ногами, перекладинами и столешницей
-     */
-    function createTable(x, z) {
-        const grp = new THREE.Group();
-
-        // Столешница
-        const topMat = makeMat(0xd4a96a, 0.4, 0.05);
-        const topEdgeMat = makeMat(0xb8864e, 0.5, 0.05);
-        const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.75), topMat);
-        top.position.y = 0.78; top.castShadow = true; top.receiveShadow = true;
-        grp.add(top);
-
-        // Фаска столешницы (декоративная рамка)
-        const edgeGeom = new THREE.BoxGeometry(1.44, 0.04, 0.79);
-        const edge = new THREE.Mesh(edgeGeom, topEdgeMat);
-        edge.position.y = 0.76; edge.castShadow = true;
-        grp.add(edge);
-
-        // 4 ноги
-        const legMat = makeMat(0x8b5e3c, 0.6, 0.05);
-        const legH = 0.74;
-        const legGeom = new THREE.CylinderGeometry(0.03, 0.035, legH, 8);
-        const legPositions = [[-0.62, 0.31, -0.31], [0.62, 0.31, -0.31], [-0.62, 0.31, 0.31], [0.62, 0.31, 0.31]];
-        legPositions.forEach(([lx, ly, lz]) => {
-            const leg = new THREE.Mesh(legGeom, legMat);
-            leg.position.set(lx, ly, lz); leg.castShadow = true;
-            grp.add(leg);
-        });
-
-        // Горизонтальные перекладины (нижняя обвязка)
-        const crossMat = makeMat(0x7a5230, 0.6, 0.05);
-        const crossGeomX = new THREE.CylinderGeometry(0.018, 0.018, 1.24, 8);
-        const crossGeomZ = new THREE.CylinderGeometry(0.018, 0.018, 0.62, 8);
-
-        const crossFront = new THREE.Mesh(crossGeomX, crossMat);
-        crossFront.rotation.z = Math.PI/2; crossFront.position.set(0, 0.18, 0.31); crossFront.castShadow = true;
-        grp.add(crossFront);
-
-        const crossBack = new THREE.Mesh(crossGeomX, crossMat);
-        crossBack.rotation.z = Math.PI/2; crossBack.position.set(0, 0.18, -0.31); crossBack.castShadow = true;
-        grp.add(crossBack);
-
-        const crossLeft = new THREE.Mesh(crossGeomZ, crossMat);
-        crossLeft.rotation.x = Math.PI/2; crossLeft.position.set(-0.62, 0.18, 0); crossLeft.castShadow = true;
-        grp.add(crossLeft);
-
-        const crossRight = new THREE.Mesh(crossGeomZ, crossMat);
-        crossRight.rotation.x = Math.PI/2; crossRight.position.set(0.62, 0.18, 0); crossRight.castShadow = true;
-        grp.add(crossRight);
-
-        // Маленькие пятки ног (опоры)
-        const footGeom = new THREE.CylinderGeometry(0.045, 0.045, 0.02, 8);
-        const footMat = makeMat(0x333333, 0.8, 0.3);
-        legPositions.forEach(([lx, , lz]) => {
-            const foot = new THREE.Mesh(footGeom, footMat);
-            foot.position.set(lx, 0.01, lz);
-            grp.add(foot);
-        });
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * СТУЛ — полноценная модель с 4 ногами, сиденьем, спинкой и подлокотниками
-     */
-    function createChair(x, z) {
-        const grp = new THREE.Group();
-
-        const seatMat = makeMat(0x4a3728, 0.7, 0.05);
-        const legMat = makeMat(0x6b4c30, 0.6, 0.05);
-        const metalMat = makeMat(0x888888, 0.3, 0.7);
-
-        // Сиденье (с небольшим скруглением через сегменты)
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.07, 0.48), seatMat);
-        seat.position.y = 0.46; seat.castShadow = true; seat.receiveShadow = true;
-        grp.add(seat);
-
-        // Мягкая подушка сиденья
-        const cushionMat = makeMat(0x6b4c30, 0.9, 0.0);
-        const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.05, 0.44), cushionMat);
-        cushion.position.y = 0.505; cushion.castShadow = true;
-        grp.add(cushion);
-
-        // Спинка
-        const back = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.52, 0.06), seatMat);
-        back.position.set(0, 0.76, -0.22); back.castShadow = true;
-        grp.add(back);
-
-        // Подушка спинки
-        const backCushion = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.46, 0.04), cushionMat);
-        backCushion.position.set(0, 0.76, -0.19); backCushion.castShadow = true;
-        grp.add(backCushion);
-
-        // 4 ноги
-        const legH = 0.44;
-        const legGeom = new THREE.CylinderGeometry(0.025, 0.028, legH, 8);
-        const legPos = [[-0.21, legH/2, -0.19], [0.21, legH/2, -0.19], [-0.21, legH/2, 0.19], [0.21, legH/2, 0.19]];
-        legPos.forEach(([lx, ly, lz]) => {
-            const leg = new THREE.Mesh(legGeom, legMat);
-            leg.position.set(lx, ly, lz); leg.castShadow = true;
-            grp.add(leg);
-        });
-
-        // Задние стойки спинки (продолжение задних ног вверх)
-        const backPostGeom = new THREE.CylinderGeometry(0.022, 0.025, 0.58, 8);
-        [-0.21, 0.21].forEach(bx => {
-            const post = new THREE.Mesh(backPostGeom, legMat);
-            post.position.set(bx, 0.73, -0.19); post.castShadow = true;
-            grp.add(post);
-        });
-
-        // Перекладины между ногами
-        const crossGeomFront = new THREE.CylinderGeometry(0.015, 0.015, 0.42, 8);
-        const crossGeomSide = new THREE.CylinderGeometry(0.015, 0.015, 0.38, 8);
-
-        const cf = new THREE.Mesh(crossGeomFront, legMat);
-        cf.rotation.z = Math.PI/2; cf.position.set(0, 0.2, 0.19); cf.castShadow = true;
-        grp.add(cf);
-
-        const cb = new THREE.Mesh(crossGeomFront, legMat);
-        cb.rotation.z = Math.PI/2; cb.position.set(0, 0.2, -0.19); cb.castShadow = true;
-        grp.add(cb);
-
-        const cl = new THREE.Mesh(crossGeomSide, legMat);
-        cl.rotation.x = Math.PI/2; cl.position.set(-0.21, 0.2, 0); cl.castShadow = true;
-        grp.add(cl);
-
-        const cr = new THREE.Mesh(crossGeomSide, legMat);
-        cr.rotation.x = Math.PI/2; cr.position.set(0.21, 0.2, 0); cr.castShadow = true;
-        grp.add(cr);
-
-        // Подлокотники
-        const armrestGeom = new THREE.BoxGeometry(0.06, 0.04, 0.28);
-        const armrestMat = makeMat(0x3d2b1f, 0.7, 0.05);
-        [-0.26, 0.26].forEach(ax => {
-            const arm = new THREE.Mesh(armrestGeom, armrestMat);
-            arm.position.set(ax, 0.65, 0.0); arm.castShadow = true;
-            grp.add(arm);
-
-            // Стойка подлокотника
-            const postGeom = new THREE.CylinderGeometry(0.018, 0.018, 0.18, 8);
-            const post = new THREE.Mesh(postGeom, legMat);
-            post.position.set(ax, 0.56, 0.1); post.castShadow = true;
-            grp.add(post);
-        });
-
-        // Маленькие пятки ног
-        const footGeom = new THREE.CylinderGeometry(0.035, 0.035, 0.015, 8);
-        const footMat = makeMat(0x222222, 0.8, 0.3);
-        legPos.forEach(([lx, , lz]) => {
-            const foot = new THREE.Mesh(footGeom, footMat);
-            foot.position.set(lx, 0.008, lz);
-            grp.add(foot);
-        });
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * СТОЙКА-РЕСЕПШН — улучшенная модель
-     */
-    function createCounter(x, z) {
-        const grp = new THREE.Group();
-
-        const bodyMat = makeMat(0xd4b896, 0.4, 0.05);
-        const topMat = makeMat(0xffffff, 0.2, 0.1);
-        const frontMat = makeMat(0xc8a87a, 0.5, 0.05);
-
-        // Основной корпус
-        const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.95, 0.55), bodyMat);
-        body.position.y = 0.475; body.castShadow = true; body.receiveShadow = true;
-        grp.add(body);
-
-        // Столешница (выступает)
-        const top = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.05, 0.62), topMat);
-        top.position.y = 0.975; top.castShadow = true;
-        grp.add(top);
-
-        // Передняя декоративная панель
-        const front = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.85, 0.04), frontMat);
-        front.position.set(0, 0.44, 0.275); front.castShadow = true;
-        grp.add(front);
-
-        // Горизонтальная полоса на передней панели
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.04, 0.045), makeMat(0x667eea, 0.3, 0.2));
-        stripe.position.set(0, 0.7, 0.275); stripe.castShadow = true;
-        grp.add(stripe);
-
-        // Ножки (4 шт)
-        const legGeom = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-        const legMat = makeMat(0x555555, 0.3, 0.7);
-        [[-0.5, 0.03, -0.24], [0.5, 0.03, -0.24], [-0.5, 0.03, 0.24], [0.5, 0.03, 0.24]].forEach(([lx,ly,lz]) => {
-            const leg = new THREE.Mesh(legGeom, legMat);
-            leg.position.set(lx, ly, lz);
-            grp.add(leg);
-        });
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * ПОЛКА — настенная полка с кронштейнами
-     */
-    function createShelf(x, z) {
-        const grp = new THREE.Group();
-
-        const shelfMat = makeMat(0xaa8866, 0.5, 0.05);
-        const bracketMat = makeMat(0x888888, 0.3, 0.7);
-
-        // Доска полки
-        const board = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.28), shelfMat);
-        board.position.y = 1.2; board.castShadow = true; board.receiveShadow = true;
-        grp.add(board);
-
-        // Кронштейны
-        const bracketGeomV = new THREE.BoxGeometry(0.025, 0.22, 0.025);
-        const bracketGeomH = new THREE.BoxGeometry(0.025, 0.025, 0.26);
-        [-0.36, 0.36].forEach(bx => {
-            const bv = new THREE.Mesh(bracketGeomV, bracketMat);
-            bv.position.set(bx, 1.09, -0.1); bv.castShadow = true;
-            grp.add(bv);
-
-            const bh = new THREE.Mesh(bracketGeomH, bracketMat);
-            bh.position.set(bx, 1.18, 0.0); bh.castShadow = true;
-            grp.add(bh);
-        });
-
-        // Декоративные предметы на полке
-        const boxMat = makeMat(0x4488cc, 0.6, 0.1);
-        const box1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.1), boxMat);
-        box1.position.set(-0.3, 1.295, 0.0); box1.castShadow = true;
-        grp.add(box1);
-
-        const box2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), makeMat(0xcc4444, 0.6, 0.1));
-        box2.position.set(-0.15, 1.28, 0.0); box2.castShadow = true;
-        grp.add(box2);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * МОНИТОР — реалистичная модель с рамкой, экраном, подставкой и кабелем
-     */
-    function createMonitor(x, z) {
-        const grp = new THREE.Group();
-
-        const frameMat = makeMat(0x1a1a1a, 0.4, 0.3);
-        const screenMat = new THREE.MeshStandardMaterial({ color:0x0a0a1a, emissive:0x1a3a6a, emissiveIntensity:0.6, roughness:0.1, metalness:0.1 });
-        const standMat = makeMat(0x333333, 0.3, 0.5);
-        const baseMat = makeMat(0x222222, 0.4, 0.4);
-
-        // Рамка монитора
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.62, 0.06), frameMat);
-        frame.position.y = 1.05; frame.castShadow = true;
-        grp.add(frame);
-
-        // Экран (чуть меньше рамки)
-        const screen = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.52, 0.02), screenMat);
-        screen.position.set(0, 1.05, 0.03); screen.castShadow = true;
-        grp.add(screen);
-
-        // Логотип (маленький кружок на нижней рамке)
-        const logoMat = makeMat(0x888888, 0.2, 0.8);
-        const logo = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.01, 8), logoMat);
-        logo.rotation.x = Math.PI/2; logo.position.set(0, 0.77, 0.04);
-        grp.add(logo);
-
-        // Шея подставки
-        const neckGeom = new THREE.CylinderGeometry(0.025, 0.04, 0.35, 8);
-        const neck = new THREE.Mesh(neckGeom, standMat);
-        neck.position.y = 0.56; neck.castShadow = true;
-        grp.add(neck);
-
-        // Крепление к монитору
-        const mountGeom = new THREE.BoxGeometry(0.12, 0.1, 0.06);
-        const mount = new THREE.Mesh(mountGeom, standMat);
-        mount.position.set(0, 0.78, -0.02); mount.castShadow = true;
-        grp.add(mount);
-
-        // Основание подставки (овальное)
-        const baseGeom = new THREE.CylinderGeometry(0.22, 0.22, 0.03, 16);
-        const base = new THREE.Mesh(baseGeom, baseMat);
-        base.scale.z = 0.6; base.position.y = 0.015; base.castShadow = true; base.receiveShadow = true;
-        grp.add(base);
-
-        // Кабель (изогнутая труба)
-        const cableMat = makeMat(0x111111, 0.9, 0.0);
-        const cableGeom = new THREE.TorusGeometry(0.08, 0.008, 6, 12, Math.PI);
-        const cable = new THREE.Mesh(cableGeom, cableMat);
-        cable.rotation.x = Math.PI/2; cable.position.set(0.05, 0.12, -0.05);
-        grp.add(cable);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * ДИНАМИК — улучшенная модель
-     */
-    function createSpeaker(x, z) {
-        const grp = new THREE.Group();
-
-        const bodyMat = makeMat(0x1a1a1a, 0.6, 0.1);
-        const grillMat = makeMat(0x2a2a2a, 0.8, 0.1);
-        const coneMat = makeMat(0x444444, 0.7, 0.1);
-
-        // Корпус
-        const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.28), bodyMat);
-        body.position.y = 0.31; body.castShadow = true; body.receiveShadow = true;
-        grp.add(body);
-
-        // Решётка динамика
-        const grill = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.02), grillMat);
-        grill.position.set(0, 0.42, 0.15); grill.castShadow = true;
-        grp.add(grill);
-
-        // Диффузор (конус)
-        const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.12, 0.04, 16), coneMat);
-        cone.rotation.x = -Math.PI/2; cone.position.set(0, 0.42, 0.14);
-        grp.add(cone);
-
-        // Твитер (маленький)
-        const tweeter = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.04, 0.02, 12), coneMat);
-        tweeter.rotation.x = -Math.PI/2; tweeter.position.set(0, 0.64, 0.15);
-        grp.add(tweeter);
-
-        // Порт фазоинвертора
-        const portGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.06, 12);
-        const port = new THREE.Mesh(portGeom, grillMat);
-        port.rotation.x = -Math.PI/2; port.position.set(0, 0.18, 0.15);
-        grp.add(port);
-
-        // Ножки
-        const footMat = makeMat(0x333333, 0.5, 0.3);
-        const footGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.015, 8);
-        [[-0.15, 0.008, -0.1], [0.15, 0.008, -0.1], [-0.15, 0.008, 0.1], [0.15, 0.008, 0.1]].forEach(([fx,fy,fz]) => {
-            const foot = new THREE.Mesh(footGeom, footMat);
-            foot.position.set(fx, fy, fz);
-            grp.add(foot);
-        });
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * КАМЕРА — купольная камера наблюдения
-     */
-    function createCamera(x, z) {
-        const grp = new THREE.Group();
-
-        const bodyMat = makeMat(0xcccccc, 0.3, 0.2);
-        const lensMat = new THREE.MeshStandardMaterial({ color:0x111111, roughness:0.1, metalness:0.5, emissive:0x001133, emissiveIntensity:0.3 });
-        const mountMat = makeMat(0x888888, 0.3, 0.5);
-
-        // Купол
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12, 0, Math.PI*2, 0, Math.PI/2), bodyMat);
-        dome.position.y = 1.1; dome.castShadow = true;
-        grp.add(dome);
-
-        // Линза
-        const lens = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), lensMat);
-        lens.position.set(0.06, 1.06, 0.06); lens.castShadow = true;
-        grp.add(lens);
-
-        // Крепление
-        const mountGeom = new THREE.CylinderGeometry(0.04, 0.06, 0.12, 8);
-        const mount = new THREE.Mesh(mountGeom, mountMat);
-        mount.position.y = 1.22; mount.castShadow = true;
-        grp.add(mount);
-
-        // Кронштейн
-        const bracketGeom = new THREE.BoxGeometry(0.06, 0.18, 0.06);
-        const bracket = new THREE.Mesh(bracketGeom, mountMat);
-        bracket.position.y = 1.35; bracket.castShadow = true;
-        grp.add(bracket);
-
-        // Индикатор (красный светодиод)
-        const ledMat = new THREE.MeshStandardMaterial({ color:0xff0000, emissive:0xff0000, emissiveIntensity:1.0 });
-        const led = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), ledMat);
-        led.position.set(-0.08, 1.08, 0.1);
-        grp.add(led);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    /**
-     * БАННЕР — рекламный баннер на стойке
-     */
-    function createBanner(x, z) {
-        const grp = new THREE.Group();
-
-        const poleMat = makeMat(0x888888, 0.3, 0.7);
-        const bannerMat = new THREE.MeshStandardMaterial({ color:0x4466ff, roughness:0.8, metalness:0.0, side: THREE.DoubleSide });
-        const baseMat = makeMat(0x555555, 0.4, 0.5);
-
-        // Основание
-        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.04, 16), baseMat);
-        base.position.y = 0.02; base.castShadow = true; base.receiveShadow = true;
-        grp.add(base);
-
-        // Стойка
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 2.0, 10), poleMat);
-        pole.position.y = 1.02; pole.castShadow = true;
-        grp.add(pole);
-
-        // Полотно баннера
-        const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.4), bannerMat);
-        banner.position.set(0, 1.3, 0.01); banner.castShadow = true;
-        grp.add(banner);
-
-        // Декоративная полоса на баннере
-        const stripeMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.8 });
-        const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.88, 0.08), stripeMat);
-        stripe.position.set(0, 1.7, 0.02);
-        grp.add(stripe);
-
-        const stripe2 = new THREE.Mesh(new THREE.PlaneGeometry(0.88, 0.08), stripeMat);
-        stripe2.position.set(0, 0.9, 0.02);
-        grp.add(stripe2);
-
-        // Верхняя перекладина
-        const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.94, 8), poleMat);
-        topBar.rotation.z = Math.PI/2; topBar.position.y = 2.0; topBar.castShadow = true;
-        grp.add(topBar);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    // -------------------- ФАБРИКА ОБЪЕКТОВ --------------------
-    function create3DObject(type, id, x, z) {
-        let obj = null;
-        switch(type) {
-            case 'table':   obj = createTable(x, z); break;
-            case 'chair':   obj = createChair(x, z); break;
-            case 'counter': obj = createCounter(x, z); break;
-            case 'shelf':   obj = createShelf(x, z); break;
-            case 'monitor': obj = createMonitor(x, z); break;
-            case 'speaker': obj = createSpeaker(x, z); break;
-            case 'camera':  obj = createCamera(x, z); break;
-            case 'banner':  obj = createBanner(x, z); break;
+    document.head.appendChild(script);
+
+    function initializeApp() {
+        // ============ ПЕРЕВОДЫ ============
+        const translations = {
+            ru: {
+                title:"🎨 Booth Designer", subtitle:"Клик по объекту — выделить и перетащить",
+                dimLabel:"📐 Размеры", lenLabel:"Длина (м)", widLabel:"Ширина (м)", heiLabel:"Высота (м)",
+                wallsLabel:"🧱 Стены", wallsCountLabel:"Количество стен", wallColorLabel:"Цвет стен", wallMatLabel:"Материал",
+                floorLabel:"🏢 Пол", floorColorLabel:"Цвет пола", floorTypeLabel:"Тип покрытия",
+                furnLabel:"🪑 Мебель", lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
+                equipLabel:"📺 Оборудование", totalLabel:"Итоговая стоимость",
+                plastic:"Пластик", wood:"Дерево", metal:"Металл", fabric:"Ткань",
+                carpet:"Ковролин", tile:"Плитка", parquet:"Паркет",
+                warm:"Тёплый", cool:"Холодный", neutral:"Нейтральный",
+                table:"Стол", chair:"Стул", counter:"Стойка", shelf:"Полка",
+                monitor:"Монитор", speaker:"Динамик", camera:"Камера", banner:"Баннер",
+                oneWall:"1 стена", twoWalls:"2 стены", threeWalls:"3 стены"
+            },
+            en: {
+                title:"🎨 Booth Designer", subtitle:"Click object to select & drag",
+                dimLabel:"📐 Dimensions", lenLabel:"Length (m)", widLabel:"Width (m)", heiLabel:"Height (m)",
+                wallsLabel:"🧱 Walls", wallsCountLabel:"Number of walls", wallColorLabel:"Wall Color", wallMatLabel:"Material",
+                floorLabel:"🏢 Floor", floorColorLabel:"Floor Color", floorTypeLabel:"Floor Type",
+                furnLabel:"🪑 Furniture", lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
+                equipLabel:"📺 Equipment", totalLabel:"Total Price",
+                plastic:"Plastic", wood:"Wood", metal:"Metal", fabric:"Fabric",
+                carpet:"Carpet", tile:"Tile", parquet:"Parquet",
+                warm:"Warm", cool:"Cool", neutral:"Neutral",
+                table:"Table", chair:"Chair", counter:"Counter", shelf:"Shelf",
+                monitor:"Monitor", speaker:"Speaker", camera:"Camera", banner:"Banner",
+                oneWall:"1 wall", twoWalls:"2 walls", threeWalls:"3 walls"
+            },
+            lv: {
+                title:"🎨 Stenda Dizainers", subtitle:"Klikšķis uz objekta — izvēlēties un vilkt",
+                dimLabel:"📐 Izmēri", lenLabel:"Garums (m)", widLabel:"Platums (m)", heiLabel:"Augstums (m)",
+                wallsLabel:"🧱 Sienas", wallsCountLabel:"Sienu skaits", wallColorLabel:"Sienu krāsa", wallMatLabel:"Materiāls",
+                floorLabel:"🏢 Grīda", floorColorLabel:"Grīdas krāsa", floorTypeLabel:"Grīdas tips",
+                furnLabel:"🪑 Mēbeles", lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
+                equipLabel:"📺 Aprīkojums", totalLabel:"Kopējā cena",
+                plastic:"Plastmasa", wood:"Koks", metal:"Metāls", fabric:"Audums",
+                carpet:"Paklājs", tile:"Flīzes", parquet:"Parkets",
+                warm:"Silts", cool:"Vēss", neutral:"Neitrāls",
+                table:"Galds", chair:"Krēsls", counter:"Skaitītājs", shelf:"Plaukts",
+                monitor:"Monitors", speaker:"Skaļrunis", camera:"Kamera", banner:"Baneris",
+                oneWall:"1 siena", twoWalls:"2 sienas", threeWalls:"3 sienas"
+            }
+        };
+
+        let currentLang = 'ru';
+
+        function applyLanguage() {
+            const t = translations[currentLang];
+            document.getElementById('title').innerText = t.title;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.getElementById('dimLabel').innerHTML = t.dimLabel;
+            document.getElementById('lenLabel').innerText = t.lenLabel;
+            document.getElementById('widLabel').innerText = t.widLabel;
+            document.getElementById('heiLabel').innerText = t.heiLabel;
+            document.getElementById('wallsLabel').innerHTML = t.wallsLabel;
+            document.getElementById('wallsCountLabel').innerText = t.wallsCountLabel;
+            document.getElementById('wallColorLabel').innerText = t.wallColorLabel;
+            document.getElementById('wallMatLabel').innerText = t.wallMatLabel;
+            document.getElementById('floorLabel').innerHTML = t.floorLabel;
+            document.getElementById('floorColorLabel').innerText = t.floorColorLabel;
+            document.getElementById('floorTypeLabel').innerText = t.floorTypeLabel;
+            document.getElementById('furnLabel').innerHTML = t.furnLabel;
+            document.getElementById('lightLabel').innerHTML = t.lightLabel;
+            document.getElementById('lightTypeLabel').innerText = t.lightTypeLabel;
+            document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
+            document.getElementById('equipLabel').innerHTML = t.equipLabel;
+            document.getElementById('totalLabel').innerText = t.totalLabel;
+            document.getElementById('infoText').innerHTML = "🖱️ Клик по объекту → выделить+тащить | ЛКМ по фону → вращать | ПКМ → панорама";
+            document.querySelectorAll('[data-wallmat]').forEach(btn => { if(t[btn.dataset.wallmat]) btn.innerText = t[btn.dataset.wallmat]; });
+            document.querySelectorAll('[data-floortype]').forEach(btn => { if(t[btn.dataset.floortype]) btn.innerText = t[btn.dataset.floortype]; });
+            document.querySelectorAll('[data-lighttype]').forEach(btn => { if(t[btn.dataset.lighttype]) btn.innerText = t[btn.dataset.lighttype]; });
+            const wallsCountBtns = document.querySelectorAll('[data-walls]');
+            if(wallsCountBtns.length===3){ wallsCountBtns[0].innerText = t.oneWall; wallsCountBtns[1].innerText = t.twoWalls; wallsCountBtns[2].innerText = t.threeWalls; }
+            updateFurnitureUITexts();
+            updateEquipmentUITexts();
         }
 
-        if(obj) {
-            // Помечаем группу и все дочерние меши
-            obj.userData.itemId = id;
-            obj.userData.itemType = type;
-            obj.traverse(child => {
-                if(child.isMesh) {
-                    child.userData.itemId = id;
-                    child.userData.rootGroup = obj;
-                    // Сохраняем оригинальный цвет и emissive
-                    if(child.material) {
-                        originalMaterials.set(child.uuid, {
-                            color: child.material.color ? child.material.color.clone() : null,
-                            emissive: child.material.emissive ? child.material.emissive.clone() : null
-                        });
-                    }
-                }
+        function updateFurnitureUITexts() {
+            const t = translations[currentLang];
+            ['table','chair','counter','shelf'].forEach(type => {
+                const label = document.querySelector(`#furnitureUI .option-label[data-type="${type}"]`);
+                if(label && t[type]) label.innerText = t[type];
             });
         }
-        return obj;
-    }
 
-    // -------------------- ПОДСВЕТКА ВЫБРАННОГО ОБЪЕКТА --------------------
-    function highlightObject(obj, highlight) {
-        if(!obj) return;
-        obj.traverse(child => {
-            if(child.isMesh && child.material) {
-                if(highlight) {
-                    child.material.emissive = new THREE.Color(0x334400);
-                    child.material.color.setHex(0xffdd66);
-                } else {
-                    const orig = originalMaterials.get(child.uuid);
-                    if(orig) {
-                        if(orig.color) child.material.color.copy(orig.color);
-                        if(orig.emissive) child.material.emissive.copy(orig.emissive);
-                        else child.material.emissive = new THREE.Color(0x000000);
-                    }
-                }
-            }
-        });
-    }
-
-    // -------------------- ПОСТРОЕНИЕ СЦЕНЫ --------------------
-    function rebuildScene() {
-        while(boothGroup.children.length) boothGroup.remove(boothGroup.children[0]);
-        itemMap.clear();
-        originalMaterials.clear();
-
-        const { length, width, height } = config.dims;
-
-        // Пол
-        const floorMat = getFloorMaterial();
-        const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(length, width), floorMat);
-        floorPlane.rotation.x = -Math.PI/2; floorPlane.receiveShadow = true;
-        boothGroup.add(floorPlane);
-
-        // Стены
-        const wallMat = getWallMaterial();
-        const backWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, 0.1), wallMat);
-        backWall.position.set(0, height/2, -width/2); backWall.castShadow=true; backWall.receiveShadow=true;
-        boothGroup.add(backWall);
-
-        if(config.wallsCount >= 2) {
-            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
-            leftWall.position.set(-length/2, height/2, 0); leftWall.castShadow=true; leftWall.receiveShadow=true;
-            boothGroup.add(leftWall);
-        }
-        if(config.wallsCount >= 3) {
-            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
-            rightWall.position.set(length/2, height/2, 0); rightWall.castShadow=true; rightWall.receiveShadow=true;
-            boothGroup.add(rightWall);
+        function updateEquipmentUITexts() {
+            const t = translations[currentLang];
+            ['monitor','speaker','camera','banner'].forEach(type => {
+                const label = document.querySelector(`#equipmentUI .option-label[data-type="${type}"]`);
+                if(label && t[type]) label.innerText = t[type];
+            });
         }
 
-        // Объекты
-        config.items.forEach(item => {
-            const obj = create3DObject(item.type, item.id, item.posX, item.posZ);
-            if(obj) { boothGroup.add(obj); itemMap.set(item.id, obj); }
-        });
-
-        // Лампы
-        lamps.forEach(l => scene.remove(l)); lamps = [];
-        const lampColor = config.lightType==='warm' ? 0xffaa66 : (config.lightType==='cool' ? 0x88aaff : 0xffffff);
-        for(let i=0; i<config.lampCount; i++) {
-            const lamp = new THREE.PointLight(lampColor, 0.8, 15);
-            lamp.castShadow = true;
-            lamp.shadow.mapSize.width = 512;
-            lamp.shadow.mapSize.height = 512;
-            const angle = (i / Math.max(1, config.lampCount)) * Math.PI * 2;
-            lamp.position.set(Math.cos(angle)*3.5, 2.8, Math.sin(angle)*3.5);
-            scene.add(lamp);
-            lamps.push(lamp);
-        }
-
-        updatePrice();
-    }
-
-    function updatePrice() {
-        const { length, width, height } = config.dims;
-        const area = length * width;
-        let total = prices.baseSqm * area;
-        total += prices.wallMat[config.wallMaterial] * (2*(length+width)*height);
-        total += prices.floor[config.floorType] * area;
-        for(let [k,v] of Object.entries(config.furniture)) total += v * prices.furniture[k];
-        for(let [k,v] of Object.entries(config.equipment)) total += v * prices.equipment[k];
-        total += config.lampCount * prices.lamp;
-        document.getElementById('totalPrice').innerHTML = `${Math.round(total).toLocaleString()} €`;
-    }
-
-    // -------------------- DRAG & DROP (ИСПРАВЛЕННАЯ СИСТЕМА) --------------------
-
-    function getCanvasRay(event) {
-        const rect = renderer.domElement.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
-            ((event.clientX - rect.left) / rect.width) * 2 - 1,
-            -((event.clientY - rect.top) / rect.height) * 2 + 1
-        );
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-        return raycaster;
-    }
-
-    function getPlaneIntersect(event, plane) {
-        const raycaster = getCanvasRay(event);
-        const point = new THREE.Vector3();
-        if(raycaster.ray.intersectPlane(plane, point)) return point;
-        return null;
-    }
-
-    /**
-     * Найти корневую группу объекта по клику
-     */
-    function findRootGroup(mesh) {
-        let node = mesh;
-        while(node) {
-            if(node.userData && node.userData.itemId) return node;
-            node = node.parent;
-        }
-        return null;
-    }
-
-    function trySelectObject(event) {
-        const raycaster = getCanvasRay(event);
-        const allMeshes = [];
-        itemMap.forEach(obj => {
-            obj.traverse(child => { if(child.isMesh) allMeshes.push(child); });
-        });
-
-        const intersects = raycaster.intersectObjects(allMeshes, false);
-        if(intersects.length > 0) {
-            const hitMesh = intersects[0].object;
-            const root = findRootGroup(hitMesh);
-            if(root && root.userData.itemId) {
-                return root;
-            }
-        }
-        return null;
-    }
-
-    // -------------------- КАМЕРА И СОБЫТИЯ --------------------
-    function initThree() {
-        const canvas = document.getElementById('canvas');
-        const w = canvas.clientWidth, h = canvas.clientHeight;
-
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050b1a);
-        scene.fog = new THREE.FogExp2(0x050b1a, 0.015);
-
-        camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
-
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        // Звёздный фон
-        const starGeometry = new THREE.BufferGeometry();
-        const starPos = [];
-        for(let i=0; i<1200; i++) {
-            starPos.push((Math.random()-0.5)*200, (Math.random()-0.5)*100, (Math.random()-0.5)*80-40);
-        }
-        starGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
-        scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color:0xffffff, size:0.08 })));
-
-        // Освещение
-        scene.add(new THREE.AmbientLight(0x404060, 0.5));
-        const mainLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
-        mainLight.position.set(5,10,5); mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 1024; mainLight.shadow.mapSize.height = 1024;
-        scene.add(mainLight);
-        scene.add(Object.assign(new THREE.PointLight(0x4466cc, 0.3), { position: new THREE.Vector3(-2,3,-3) }));
-
-        boothGroup = new THREE.Group();
-        scene.add(boothGroup);
-
-        // Обработчики событий
-        window.addEventListener('resize', onResize);
-        canvas.addEventListener('mousedown', onMouseDown);
-        canvas.addEventListener('mousemove', onMouseMove);
-        canvas.addEventListener('mouseup', onMouseUp);
-        canvas.addEventListener('wheel', onWheel, { passive: false });
-        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-        canvas.addEventListener('touchend', onTouchEnd);
-        canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-        animate();
-    }
-
-    function updateCamera() {
-        const x = center.x + panX + radius * Math.sin(orbitX) * Math.cos(orbitY);
-        const y = center.y + panY + radius * Math.sin(orbitY);
-        const z = center.z + panZ + radius * Math.cos(orbitX) * Math.cos(orbitY);
-        camera.position.set(x, y, z);
-        camera.lookAt(center.x + panX, center.y + panY, center.z + panZ);
-    }
-
-    function onMouseDown(e) {
-        e.preventDefault();
-
-        if(e.button === 0) {
-            // Левая кнопка: сначала проверяем, попали ли по объекту
-            const hit = trySelectObject(e);
-            if(hit) {
-                // Снять предыдущее выделение
-                if(selectedObj && selectedObj !== hit) highlightObject(selectedObj, false);
-
-                selectedObj = hit;
-                selectedId = hit.userData.itemId;
-                isDraggingObj = true;
-
-                // Плоскость перетаскивания на уровне Y объекта
-                dragPlane.set(new THREE.Vector3(0,1,0), -selectedObj.position.y);
-                const p = getPlaneIntersect(e, dragPlane);
-                if(p) dragOffsetVec.copy(selectedObj.position).sub(p);
-
-                highlightObject(selectedObj, true);
-                document.getElementById('selectedTooltip').style.display = 'block';
-                return;
-            } else {
-                // Клик по пустому месту — снять выделение и начать орбиту
-                if(selectedObj) {
-                    highlightObject(selectedObj, false);
-                    selectedObj = null; selectedId = null;
-                    document.getElementById('selectedTooltip').style.display = 'none';
-                }
-                isOrbiting = true;
-            }
-        } else if(e.button === 2) {
-            isPanning = true;
-        }
-
-        lastMousePos = { x: e.clientX, y: e.clientY };
-    }
-
-    function onMouseMove(e) {
-        if(isDraggingObj && selectedObj) {
-            const p = getPlaneIntersect(e, dragPlane);
-            if(p) {
-                let newPos = p.clone().add(dragOffsetVec);
-                const limitX = (config.dims.length / 2) - 0.5;
-                const limitZ = (config.dims.width / 2) - 0.5;
-                newPos.x = Math.max(-limitX, Math.min(limitX, newPos.x));
-                newPos.z = Math.max(-limitZ, Math.min(limitZ, newPos.z));
-                newPos.y = selectedObj.position.y; // фиксируем высоту
-                selectedObj.position.copy(newPos);
-                const item = config.items.find(i => i.id === selectedId);
-                if(item) { item.posX = newPos.x; item.posZ = newPos.z; }
-            }
-            return;
-        }
-
-        if(!isOrbiting && !isPanning) return;
-
-        const dx = e.clientX - lastMousePos.x;
-        const dy = e.clientY - lastMousePos.y;
-
-        if(isOrbiting) {
-            orbitX += dx * 0.008;
-            orbitY += dy * 0.008;
-            orbitY = Math.max(0.15, Math.min(Math.PI/2.1, orbitY));
-        } else if(isPanning) {
-            panX -= dx * 0.01;
-            panY += dy * 0.01;
-        }
-
-        lastMousePos = { x: e.clientX, y: e.clientY };
-    }
-
-    function onMouseUp(e) {
-        if(isDraggingObj && selectedObj) {
-            // Объект остаётся выделенным после отпускания (можно двигать снова)
-            isDraggingObj = false;
-        }
-        isOrbiting = false;
-        isPanning = false;
-    }
-
-    function onWheel(e) {
-        e.preventDefault();
-        radius += e.deltaY * 0.01;
-        radius = Math.max(3.0, Math.min(16, radius));
-    }
-
-    // Touch
-    function onTouchStart(e) {
-        e.preventDefault();
-        if(e.touches.length === 1) {
-            const fake = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY, button: 0 };
-            onMouseDown(fake);
-        }
-    }
-    function onTouchMove(e) {
-        e.preventDefault();
-        if(e.touches.length === 1) {
-            const fake = { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
-            onMouseMove(fake);
-        }
-    }
-    function onTouchEnd(e) { onMouseUp({}); }
-
-    function onResize() {
-        const canvas = document.getElementById('canvas');
-        const w = canvas.clientWidth, h = canvas.clientHeight;
-        camera.aspect = w/h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        updateCamera();
-        renderer.render(scene, camera);
-    }
-
-    // -------------------- UI МЕБЕЛЬ И ОБОРУДОВАНИЕ --------------------
-    function buildFurnitureUI() {
-        const container = document.getElementById('furnitureUI');
-        container.innerHTML = '';
-        ['table','chair','counter','shelf'].forEach(type => {
-            const div = document.createElement('div'); div.className = 'option-group';
-            const label = document.createElement('label'); label.className = 'option-label'; label.setAttribute('data-type', type); label.innerText = translations[currentLang][type];
-            const ctrl = document.createElement('div'); ctrl.className = 'counter-control';
-            const minus = document.createElement('button'); minus.innerText = '-'; minus.className = 'counter-btn';
-            const valSpan = document.createElement('span'); valSpan.className = 'counter-value'; valSpan.id = `furn_${type}`; valSpan.innerText = config.furniture[type];
-            const plus = document.createElement('button'); plus.innerText = '+'; plus.className = 'counter-btn';
-            minus.addEventListener('click', () => changeFurniture(type, -1));
-            plus.addEventListener('click', () => changeFurniture(type, 1));
-            ctrl.append(minus, valSpan, plus); div.append(label, ctrl); container.appendChild(div);
-        });
-    }
-
-    function buildEquipmentUI() {
-        const container = document.getElementById('equipmentUI');
-        container.innerHTML = '';
-        ['monitor','speaker','camera','banner'].forEach(type => {
-            const div = document.createElement('div'); div.className = 'option-group';
-            const label = document.createElement('label'); label.className = 'option-label'; label.setAttribute('data-type', type); label.innerText = translations[currentLang][type];
-            const ctrl = document.createElement('div'); ctrl.className = 'counter-control';
-            const minus = document.createElement('button'); minus.innerText = '-'; minus.className = 'counter-btn';
-            const valSpan = document.createElement('span'); valSpan.className = 'counter-value'; valSpan.id = `equip_${type}`; valSpan.innerText = config.equipment[type];
-            const plus = document.createElement('button'); plus.innerText = '+'; plus.className = 'counter-btn';
-            minus.addEventListener('click', () => changeEquipment(type, -1));
-            plus.addEventListener('click', () => changeEquipment(type, 1));
-            ctrl.append(minus, valSpan, plus); div.append(label, ctrl); container.appendChild(div);
-        });
-    }
-
-    function addItem(type, category) {
-        const limitX = (config.dims.length/2) - 0.8;
-        const limitZ = (config.dims.width/2) - 0.8;
-        const posX = (Math.random()-0.5) * limitX * 1.6;
-        const posZ = (Math.random()-0.5) * limitZ * 1.6;
-        const id = `${category}_${type}_${nextId++}`;
-        config.items.push({ id, type, category, posX, posZ });
-    }
-
-    function removeLastItem(type, category) {
-        for(let i = config.items.length-1; i >= 0; i--) {
-            if(config.items[i].type === type && config.items[i].category === category) {
-                config.items.splice(i, 1); break;
-            }
-        }
-    }
-
-    function changeFurniture(type, delta) {
-        let newVal = config.furniture[type] + delta;
-        if(newVal < 0) newVal = 0; if(newVal > 20) newVal = 20;
-        if(newVal > config.furniture[type]) for(let i=0; i<newVal-config.furniture[type]; i++) addItem(type,'furniture');
-        else if(newVal < config.furniture[type]) for(let i=0; i<config.furniture[type]-newVal; i++) removeLastItem(type,'furniture');
-        config.furniture[type] = newVal;
-        document.getElementById(`furn_${type}`).innerText = newVal;
-        rebuildScene();
-    }
-
-    function changeEquipment(type, delta) {
-        let newVal = config.equipment[type] + delta;
-        if(newVal < 0) newVal = 0; if(newVal > 20) newVal = 20;
-        if(newVal > config.equipment[type]) for(let i=0; i<newVal-config.equipment[type]; i++) addItem(type,'equipment');
-        else if(newVal < config.equipment[type]) for(let i=0; i<config.equipment[type]-newVal; i++) removeLastItem(type,'equipment');
-        config.equipment[type] = newVal;
-        document.getElementById(`equip_${type}`).innerText = newVal;
-        rebuildScene();
-    }
-
-    function syncUI() {
-        document.querySelectorAll('[data-length]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-length="${config.dims.length}"]`).classList.add('selected');
-        document.querySelectorAll('[data-width]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-width="${config.dims.width}"]`).classList.add('selected');
-        document.querySelectorAll('[data-height]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-height="${config.dims.height}"]`).classList.add('selected');
-        document.querySelectorAll('[data-walls]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-walls="${config.wallsCount}"]`).classList.add('selected');
-        document.getElementById('wallColorPicker').value = config.wallColor;
-        document.getElementById('floorColorPicker').value = config.floorColor;
-        document.querySelectorAll('[data-wallmat]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-wallmat="${config.wallMaterial}"]`).classList.add('selected');
-        document.querySelectorAll('[data-floortype]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-floortype="${config.floorType}"]`).classList.add('selected');
-        document.querySelectorAll('[data-lighttype]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-lighttype="${config.lightType}"]`).classList.add('selected');
-        document.getElementById('lampCountVal').innerText = config.lampCount;
-        buildFurnitureUI();
-        buildEquipmentUI();
-    }
-
-    function resetConfig() {
-        // Снять выделение
-        if(selectedObj) { highlightObject(selectedObj, false); selectedObj = null; selectedId = null; }
-        document.getElementById('selectedTooltip').style.display = 'none';
-
-        config = {
+        // ============ КОНФИГУРАЦИЯ ============
+        let config = {
             dims: { length:4, width:3, height:2.5 },
-            wallsCount:3, wallColor:'#ffffff', wallMaterial:'plastic',
-            floorColor:'#cccccc', floorType:'carpet', lightType:'warm', lampCount:2,
+            wallsCount: 3,
+            wallColor: '#ffffff',
+            wallMaterial: 'plastic',
+            floorColor: '#cccccc',
+            floorType: 'carpet',
+            lightType: 'warm',
+            lampCount: 2,
             furniture: { table:0, chair:0, counter:0, shelf:0 },
             equipment: { monitor:0, speaker:0, camera:0, banner:0 },
             items: []
         };
-        nextId = 1;
-        syncUI();
-        rebuildScene();
-    }
-
-    function saveToFile() {
-        const dataStr = JSON.stringify(config, null, 2);
-        const blob = new Blob([dataStr], { type:'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'booth_config.json'; a.click();
-        URL.revokeObjectURL(url);
-        alert('Конфигурация сохранена');
-    }
-
-    function loadFromFile(file) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            try {
-                config = JSON.parse(e.target.result);
-                syncUI();
-                rebuildScene();
-                document.getElementById('modeModal').style.display = 'none';
-            } catch(err) { alert('Ошибка загрузки файла'); }
+        let nextId = 1;
+        const prices = {
+            baseSqm: 120,
+            wallMat: { plastic:30, wood:80, metal:110, fabric:45 },
+            floor: { carpet:25, tile:35, wood:55 },
+            furniture: { table:180, chair:85, counter:320, shelf:210 },
+            equipment: { monitor:650, speaker:220, camera:480, banner:130 },
+            lamp: 50
         };
-        reader.readAsText(file);
-    }
 
-    function attachEvents() {
-        document.getElementById('lengthOpts').querySelectorAll('[data-length]').forEach(btn => btn.addEventListener('click', e => { config.dims.length = parseFloat(e.target.dataset.length); rebuildScene(); syncUI(); }));
-        document.getElementById('widthOpts').querySelectorAll('[data-width]').forEach(btn => btn.addEventListener('click', e => { config.dims.width = parseFloat(e.target.dataset.width); rebuildScene(); syncUI(); }));
-        document.getElementById('heightOpts').querySelectorAll('[data-height]').forEach(btn => btn.addEventListener('click', e => { config.dims.height = parseFloat(e.target.dataset.height); rebuildScene(); syncUI(); }));
-        document.getElementById('wallsCountOpts').querySelectorAll('[data-walls]').forEach(btn => btn.addEventListener('click', e => { config.wallsCount = parseInt(e.target.dataset.walls); rebuildScene(); syncUI(); }));
-        document.getElementById('wallColorPicker').addEventListener('change', e => { config.wallColor = e.target.value; rebuildScene(); });
-        document.getElementById('floorColorPicker').addEventListener('change', e => { config.floorColor = e.target.value; rebuildScene(); });
-        document.getElementById('wallMatOpts').querySelectorAll('[data-wallmat]').forEach(btn => btn.addEventListener('click', e => { config.wallMaterial = e.target.dataset.wallmat; rebuildScene(); syncUI(); }));
-        document.getElementById('floorTypeOpts').querySelectorAll('[data-floortype]').forEach(btn => btn.addEventListener('click', e => { config.floorType = e.target.dataset.floortype; rebuildScene(); syncUI(); }));
-        document.getElementById('lightTypeOpts').querySelectorAll('[data-lighttype]').forEach(btn => btn.addEventListener('click', e => { config.lightType = e.target.dataset.lighttype; rebuildScene(); syncUI(); }));
-        document.getElementById('lampPlus').addEventListener('click', () => { if(config.lampCount < 8){ config.lampCount++; document.getElementById('lampCountVal').innerText = config.lampCount; rebuildScene(); } });
-        document.getElementById('lampMinus').addEventListener('click', () => { if(config.lampCount > 0){ config.lampCount--; document.getElementById('lampCountVal').innerText = config.lampCount; rebuildScene(); } });
-        document.getElementById('saveBtn').addEventListener('click', saveToFile);
-        document.getElementById('resetBtn').addEventListener('click', resetConfig);
-        document.getElementById('loadConfigBtn').addEventListener('click', () => document.getElementById('configFileInput').click());
-        document.getElementById('configFileInput').addEventListener('change', e => { if(e.target.files[0]) loadFromFile(e.target.files[0]); });
-        document.querySelectorAll('.category-header').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('active')));
-        document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => {
-            currentLang = btn.dataset.lang;
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            applyLanguage();
+        // ============ 3D ГЛОБАЛЬНЫЕ ============
+        let scene, camera, renderer, boothGroup;
+        let orbitX = 0.8, orbitY = 0.5, radius = 7;
+        let center = new THREE.Vector3(0, 1.2, 0);
+        let panX = 0, panY = 0, panZ = 0;
+
+        let isOrbiting = false;
+        let isPanning = false;
+        let isDraggingObj = false;
+        let lastMousePos = { x:0, y:0 };
+
+        let selectedObj = null;
+        let selectedId = null;
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+        let dragOffsetVec = new THREE.Vector3();
+
+        let itemMap = new Map();
+        let lamps = [];
+        let originalMaterials = new Map();
+
+        // ============ ТЕКСТУРЫ ============
+        function createWoodTexture() {
+            const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#c7a47b'; ctx.fillRect(0,0,512,512);
+            for(let i=0;i<200;i++){
+                ctx.beginPath(); ctx.moveTo(i*20,0); ctx.lineTo(i*20+10,512); ctx.lineTo(i*20-10,512);
+                ctx.fillStyle='#a57c52'; ctx.fill();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2,2);
+            return tex;
+        }
+
+        function createTileTexture() {
+            const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle='#aaaaaa'; ctx.fillRect(0,0,512,512);
+            ctx.strokeStyle='#666'; ctx.lineWidth=10;
+            for(let i=0;i<8;i++){
+                ctx.beginPath(); ctx.moveTo(i*64,0); ctx.lineTo(i*64,512); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0,i*64); ctx.lineTo(512,i*64); ctx.stroke();
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4,4);
+            return tex;
+        }
+
+        function createParquetTexture() {
+            const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle='#b87c4f'; ctx.fillRect(0,0,512,512);
+            for(let i=0;i<20;i++){ ctx.fillStyle='#9b5e2e'; ctx.fillRect(i*50,0,20,512); }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(4,4);
+            return tex;
+        }
+
+        function getWallMaterial() {
+            const color = new THREE.Color(config.wallColor);
+            switch(config.wallMaterial){
+                case 'wood': return new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness:0.6, metalness:0.1 });
+                case 'metal': return new THREE.MeshStandardMaterial({ color, roughness:0.2, metalness:0.9 });
+                case 'fabric': return new THREE.MeshStandardMaterial({ color, roughness:0.9, metalness:0 });
+                default: return new THREE.MeshStandardMaterial({ color, roughness:0.3, metalness:0.1 });
+            }
+        }
+
+        function getFloorMaterial() {
+            const color = new THREE.Color(config.floorColor);
+            switch(config.floorType){
+                case 'tile': return new THREE.MeshStandardMaterial({ map: createTileTexture(), roughness:0.4, metalness:0.05 });
+                case 'wood': return new THREE.MeshStandardMaterial({ map: createParquetTexture(), roughness:0.7, metalness:0.05 });
+                default: return new THREE.MeshStandardMaterial({ color, roughness:0.9, metalness:0 });
+            }
+        }
+
+        // ============ СОЗДАНИЕ 3D ОБЪЕКТОВ ============
+        function makeMat(color, roughness=0.5, metalness=0.1) {
+            return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+        }
+
+        function createTable(x, z) {
+            const grp = new THREE.Group();
+            const topMat = makeMat(0xd4a96a, 0.4, 0.05);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.75), topMat);
+            top.position.y = 0.78; top.castShadow = true; top.receiveShadow = true;
+            grp.add(top);
+            const legMat = makeMat(0x8b5e3c, 0.6, 0.05);
+            const legH = 0.74;
+            const legGeom = new THREE.CylinderGeometry(0.03, 0.035, legH, 8);
+            const legPositions = [[-0.62, 0.31, -0.31], [0.62, 0.31, -0.31], [-0.62, 0.31, 0.31], [0.62, 0.31, 0.31]];
+            legPositions.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(lx, ly, lz); leg.castShadow = true;
+                grp.add(leg);
+            });
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createChair(x, z) {
+            const grp = new THREE.Group();
+            const seatMat = makeMat(0x4a3728, 0.7, 0.05);
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.07, 0.48), seatMat);
+            seat.position.y = 0.46; seat.castShadow = true; seat.receiveShadow = true;
+            grp.add(seat);
+            const legMat = makeMat(0x6b4c30, 0.6, 0.05);
+            const legH = 0.44;
+            const legGeom = new THREE.CylinderGeometry(0.025, 0.028, legH, 8);
+            const legPos = [[-0.21, legH/2, -0.19], [0.21, legH/2, -0.19], [-0.21, legH/2, 0.19], [0.21, legH/2, 0.19]];
+            legPos.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(lx, ly, lz); leg.castShadow = true;
+                grp.add(leg);
+            });
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.52, 0.06), seatMat);
+            back.position.set(0, 0.76, -0.22); back.castShadow = true;
+            grp.add(back);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createCounter(x, z) {
+            const grp = new THREE.Group();
+            const bodyMat = makeMat(0xd4b896, 0.4, 0.05);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.95, 0.55), bodyMat);
+            body.position.y = 0.475; body.castShadow = true; body.receiveShadow = true;
+            grp.add(body);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.05, 0.62), makeMat(0xffffff, 0.2, 0.1));
+            top.position.y = 0.975; top.castShadow = true;
+            grp.add(top);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createShelf(x, z) {
+            const grp = new THREE.Group();
+            const board = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.28), makeMat(0xaa8866, 0.5, 0.05));
+            board.position.y = 1.2; board.castShadow = true; board.receiveShadow = true;
+            grp.add(board);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createMonitor(x, z) {
+            const grp = new THREE.Group();
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.62, 0.06), makeMat(0x1a1a1a, 0.4, 0.3));
+            frame.position.y = 1.05; frame.castShadow = true;
+            grp.add(frame);
+            const screen = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.52, 0.02), new THREE.MeshStandardMaterial({ color:0x0a0a1a, emissive:0x1a3a6a, emissiveIntensity:0.6, roughness:0.1, metalness:0.1 }));
+            screen.position.set(0, 1.05, 0.03); screen.castShadow = true;
+            grp.add(screen);
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 16), makeMat(0x222222, 0.4, 0.4));
+            base.scale.z = 0.6; base.position.y = 0.015; base.castShadow = true; base.receiveShadow = true;
+            grp.add(base);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createSpeaker(x, z) {
+            const grp = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.62, 0.28), makeMat(0x1a1a1a, 0.6, 0.1));
+            body.position.y = 0.31; body.castShadow = true; body.receiveShadow = true;
+            grp.add(body);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createCamera(x, z) {
+            const grp = new THREE.Group();
+            const dome = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12, 0, Math.PI*2, 0, Math.PI/2), makeMat(0xcccccc, 0.3, 0.2));
+            dome.position.y = 1.1; dome.castShadow = true;
+            grp.add(dome);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        function createBanner(x, z) {
+            const grp = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.04, 16), makeMat(0x555555, 0.4, 0.5));
+            base.position.y = 0.02; base.castShadow = true; base.receiveShadow = true;
+            grp.add(base);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 2.0, 10), makeMat(0x888888, 0.3, 0.7));
+            pole.position.y = 1.02; pole.castShadow = true;
+            grp.add(pole);
+            const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.4), new THREE.MeshStandardMaterial({ color:0x4466ff, roughness:0.8, metalness:0.0, side: THREE.DoubleSide }));
+            banner.position.set(0, 1.3, 0.01); banner.castShadow = true;
+            grp.add(banner);
+            grp.position.set(x, 0, z);
+            return grp;
+        }
+
+        // ============ ФАБРИКА ОБЪЕКТОВ ============
+        function create3DObject(type, id, x, z) {
+            let obj = null;
+            switch(type) {
+                case 'table':   obj = createTable(x, z); break;
+                case 'chair':   obj = createChair(x, z); break;
+                case 'counter': obj = createCounter(x, z); break;
+                case 'shelf':   obj = createShelf(x, z); break;
+                case 'monitor': obj = createMonitor(x, z); break;
+                case 'speaker': obj = createSpeaker(x, z); break;
+                case 'camera':  obj = createCamera(x, z); break;
+                case 'banner':  obj = createBanner(x, z); break;
+            }
+
+            if(obj) {
+                obj.userData.itemId = id;
+                obj.userData.itemType = type;
+                obj.traverse(child => {
+                    if(child.isMesh) {
+                        child.userData.itemId = id;
+                        child.userData.rootGroup = obj;
+                        if(child.material) {
+                            originalMaterials.set(child.uuid, {
+                                color: child.material.color ? child.material.color.clone() : null,
+                                emissive: child.material.emissive ? child.material.emissive.clone() : null
+                            });
+                        }
+                    }
+                });
+            }
+            return obj;
+        }
+
+        // ============ ПОДСВЕТКА ============
+        function highlightObject(obj, highlight) {
+            if(!obj) return;
+            obj.traverse(child => {
+                if(child.isMesh && child.material) {
+                    if(highlight) {
+                        child.material.emissive = new THREE.Color(0x334400);
+                        child.material.color.setHex(0xffdd66);
+                    } else {
+                        const orig = originalMaterials.get(child.uuid);
+                        if(orig) {
+                            if(orig.color) child.material.color.copy(orig.color);
+                            if(orig.emissive) child.material.emissive.copy(orig.emissive);
+                            else child.material.emissive = new THREE.Color(0x000000);
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ ПОСТРОЕНИЕ СЦЕНЫ ============
+        function rebuildScene() {
+            while(boothGroup.children.length) boothGroup.remove(boothGroup.children[0]);
+            itemMap.clear();
+            originalMaterials.clear();
+
+            const { length, width, height } = config.dims;
+
+            const floorMat = getFloorMaterial();
+            const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(length, width), floorMat);
+            floorPlane.rotation.x = -Math.PI/2; floorPlane.receiveShadow = true;
+            boothGroup.add(floorPlane);
+
+            const wallMat = getWallMaterial();
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, 0.1), wallMat);
+            backWall.position.set(0, height/2, -width/2); backWall.castShadow=true; backWall.receiveShadow=true;
+            boothGroup.add(backWall);
+
+            if(config.wallsCount >= 2) {
+                const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
+                leftWall.position.set(-length/2, height/2, 0); leftWall.castShadow=true; leftWall.receiveShadow=true;
+                boothGroup.add(leftWall);
+            }
+            if(config.wallsCount >= 3) {
+                const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
+                rightWall.position.set(length/2, height/2, 0); rightWall.castShadow=true; rightWall.receiveShadow=true;
+                boothGroup.add(rightWall);
+            }
+
+            config.items.forEach(item => {
+                const obj = create3DObject(item.type, item.id, item.posX, item.posZ);
+                if(obj) { boothGroup.add(obj); itemMap.set(item.id, obj); }
+            });
+
+            lamps.forEach(l => scene.remove(l)); lamps = [];
+            const lampColor = config.lightType==='warm' ? 0xffaa66 : (config.lightType==='cool' ? 0x88aaff : 0xffffff);
+            for(let i=0; i<config.lampCount; i++) {
+                const lamp = new THREE.PointLight(lampColor, 0.8, 15);
+                lamp.castShadow = true;
+                lamp.shadow.mapSize.width = 512;
+                lamp.shadow.mapSize.height = 512;
+                const angle = (i / Math.max(1, config.lampCount)) * Math.PI * 2;
+                lamp.position.set(Math.cos(angle)*3.5, 2.8, Math.sin(angle)*3.5);
+                scene.add(lamp);
+                lamps.push(lamp);
+            }
+
+            updatePrice();
+        }
+
+        function updatePrice() {
+            const { length, width, height } = config.dims;
+            const area = length * width;
+            let total = prices.baseSqm * area;
+            total += prices.wallMat[config.wallMaterial] * (2*(length+width)*height);
+            total += prices.floor[config.floorType] * area;
+            for(let [k,v] of Object.entries(config.furniture)) total += v * prices.furniture[k];
+            for(let [k,v] of Object.entries(config.equipment)) total += v * prices.equipment[k];
+            total += config.lampCount * prices.lamp;
+            document.getElementById('totalPrice').innerHTML = `${Math.round(total).toLocaleString()} €`;
+        }
+
+        // ============ DRAG & DROP ============
+        function getCanvasRay(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1
+            );
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            return raycaster;
+        }
+
+        function getPlaneIntersect(event, plane) {
+            const raycaster = getCanvasRay(event);
+            const point = new THREE.Vector3();
+            if(raycaster.ray.intersectPlane(plane, point)) return point;
+            return null;
+        }
+
+        function findRootGroup(mesh) {
+            let node = mesh;
+            while(node) {
+                if(node.userData && node.userData.itemId) return node;
+                node = node.parent;
+            }
+            return null;
+        }
+
+        function trySelectObject(event) {
+            const raycaster = getCanvasRay(event);
+            const allMeshes = [];
+            itemMap.forEach(obj => {
+                obj.traverse(child => { if(child.isMesh) allMeshes.push(child); });
+            });
+
+            const intersects = raycaster.intersectObjects(allMeshes, false);
+            if(intersects.length > 0) {
+                const hitMesh = intersects[0].object;
+                const root = findRootGroup(hitMesh);
+                if(root && root.userData.itemId) {
+                    return root;
+                }
+            }
+            return null;
+        }
+
+        // ============ ИНИЦИАЛИЗАЦИЯ THREE ============
+        function initThree() {
+            const canvas = document.getElementById('canvas');
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050b1a);
+            scene.fog = new THREE.FogExp2(0x050b1a, 0.015);
+
+            camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+            renderer.setSize(w, h);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            const starGeometry = new THREE.BufferGeometry();
+            const starPos = [];
+            for(let i=0; i<1200; i++) {
+                starPos.push((Math.random()-0.5)*200, (Math.random()-0.5)*100, (Math.random()-0.5)*80-40);
+            }
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
+            scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color:0xffffff, size:0.08 })));
+
+            scene.add(new THREE.AmbientLight(0x404060, 0.5));
+            const mainLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+            mainLight.position.set(5,10,5); mainLight.castShadow = true;
+            mainLight.shadow.mapSize.width = 1024; mainLight.shadow.mapSize.height = 1024;
+            scene.add(mainLight);
+            scene.add(Object.assign(new THREE.PointLight(0x4466cc, 0.3), { position: new THREE.Vector3(-2,3,-3) }));
+
+            boothGroup = new THREE.Group();
+            scene.add(boothGroup);
+
+            window.addEventListener('resize', onResize);
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            animate();
+        }
+
+        function updateCamera() {
+            const x = center.x + panX + radius * Math.sin(orbitX) * Math.cos(orbitY);
+            const y = center.y + panY + radius * Math.sin(orbitY);
+            const z = center.z + panZ + radius * Math.cos(orbitX) * Math.cos(orbitY);
+            camera.position.set(x, y, z);
+            camera.lookAt(center.x + panX, center.y + panY, center.z + panZ);
+        }
+
+        function onMouseDown(e) {
+            e.preventDefault();
+
+            if(e.button === 0) {
+                const hit = trySelectObject(e);
+                if(hit) {
+                    if(selectedObj && selectedObj !== hit) highlightObject(selectedObj, false);
+                    selectedObj = hit;
+                    selectedId = hit.userData.itemId;
+                    isDraggingObj = true;
+                    dragPlane.set(new THREE.Vector3(0,1,0), -selectedObj.position.y);
+                    const p = getPlaneIntersect(e, dragPlane);
+                    if(p) dragOffsetVec.copy(selectedObj.position).sub(p);
+                    highlightObject(selectedObj, true);
+                    return;
+                } else {
+                    if(selectedObj) {
+                        highlightObject(selectedObj, false);
+                        selectedObj = null; selectedId = null;
+                    }
+                    isOrbiting = true;
+                }
+            } else if(e.button === 2) {
+                isPanning = true;
+            }
+
+            lastMousePos = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseMove(e) {
+            if(isDraggingObj && selectedObj) {
+                const p = getPlaneIntersect(e, dragPlane);
+                if(p) {
+                    let newPos = p.clone().add(dragOffsetVec);
+                    const limitX = (config.dims.length / 2) - 0.5;
+                    const limitZ = (config.dims.width / 2) - 0.5;
+                    newPos.x = Math.max(-limitX, Math.min(limitX, newPos.x));
+                    newPos.z = Math.max(-limitZ, Math.min(limitZ, newPos.z));
+                    newPos.y = selectedObj.position.y;
+                    selectedObj.position.copy(newPos);
+                    const item = config.items.find(i => i.id === selectedId);
+                    if(item) { item.posX = newPos.x; item.posZ = newPos.z; }
+                }
+                return;
+            }
+
+            if(!isOrbiting && !isPanning) return;
+
+            const dx = e.clientX - lastMousePos.x;
+            const dy = e.clientY - lastMousePos.y;
+
+            if(isOrbiting) {
+                orbitX += dx * 0.008;
+                orbitY += dy * 0.008;
+                orbitY = Math.max(0.15, Math.min(Math.PI/2.1, orbitY));
+            } else if(isPanning) {
+                panX -= dx * 0.01;
+                panY += dy * 0.01;
+            }
+
+            lastMousePos = { x: e.clientX, y: e.clientY };
+        }
+
+        function onMouseUp(e) {
+            isDraggingObj = false;
+            isOrbiting = false;
+            isPanning = false;
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            radius += e.deltaY * 0.01;
+            radius = Math.max(3.0, Math.min(16, radius));
+        }
+
+        function onResize() {
+            const canvas = document.getElementById('canvas');
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            camera.aspect = w/h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+
+        // ============ UI ============
+        function buildFurnitureUI() {
+            const container = document.getElementById('furnitureUI');
+            container.innerHTML = '';
+            ['table','chair','counter','shelf'].forEach(type => {
+                const div = document.createElement('div'); div.className = 'option-group';
+                const label = document.createElement('label'); label.className = 'option-label'; label.setAttribute('data-type', type); label.innerText = translations[currentLang][type];
+                const ctrl = document.createElement('div'); ctrl.className = 'counter-control';
+                const minus = document.createElement('button'); minus.innerText = '-'; minus.className = 'counter-btn';
+                const valSpan = document.createElement('span'); valSpan.className = 'counter-value'; valSpan.id = `furn_${type}`; valSpan.innerText = config.furniture[type];
+                const plus = document.createElement('button'); plus.innerText = '+'; plus.className = 'counter-btn';
+                minus.addEventListener('click', () => changeFurniture(type, -1));
+                plus.addEventListener('click', () => changeFurniture(type, 1));
+                ctrl.append(minus, valSpan, plus); div.append(label, ctrl); container.appendChild(div);
+            });
+        }
+
+        function buildEquipmentUI() {
+            const container = document.getElementById('equipmentUI');
+            container.innerHTML = '';
+            ['monitor','speaker','camera','banner'].forEach(type => {
+                const div = document.createElement('div'); div.className = 'option-group';
+                const label = document.createElement('label'); label.className = 'option-label'; label.setAttribute('data-type', type); label.innerText = translations[currentLang][type];
+                const ctrl = document.createElement('div'); ctrl.className = 'counter-control';
+                const minus = document.createElement('button'); minus.innerText = '-'; minus.className = 'counter-btn';
+                const valSpan = document.createElement('span'); valSpan.className = 'counter-value'; valSpan.id = `equip_${type}`; valSpan.innerText = config.equipment[type];
+                const plus = document.createElement('button'); plus.innerText = '+'; plus.className = 'counter-btn';
+                minus.addEventListener('click', () => changeEquipment(type, -1));
+                plus.addEventListener('click', () => changeEquipment(type, 1));
+                ctrl.append(minus, valSpan, plus); div.append(label, ctrl); container.appendChild(div);
+            });
+        }
+
+        function addItem(type, category) {
+            const limitX = (config.dims.length/2) - 0.8;
+            const limitZ = (config.dims.width/2) - 0.8;
+            const posX = (Math.random()-0.5) * limitX * 1.6;
+            const posZ = (Math.random()-0.5) * limitZ * 1.6;
+            const id = `${category}_${type}_${nextId++}`;
+            config.items.push({ id, type, category, posX, posZ });
+        }
+
+        function removeLastItem(type, category) {
+            for(let i = config.items.length-1; i >= 0; i--) {
+                if(config.items[i].type === type && config.items[i].category === category) {
+                    config.items.splice(i, 1); break;
+                }
+            }
+        }
+
+        function changeFurniture(type, delta) {
+            let newVal = config.furniture[type] + delta;
+            if(newVal < 0) newVal = 0; if(newVal > 20) newVal = 20;
+            if(newVal > config.furniture[type]) for(let i=0; i<newVal-config.furniture[type]; i++) addItem(type,'furniture');
+            else if(newVal < config.furniture[type]) for(let i=0; i<config.furniture[type]-newVal; i++) removeLastItem(type,'furniture');
+            config.furniture[type] = newVal;
+            document.getElementById(`furn_${type}`).innerText = newVal;
+            rebuildScene();
+        }
+
+        function changeEquipment(type, delta) {
+            let newVal = config.equipment[type] + delta;
+            if(newVal < 0) newVal = 0; if(newVal > 20) newVal = 20;
+            if(newVal > config.equipment[type]) for(let i=0; i<newVal-config.equipment[type]; i++) addItem(type,'equipment');
+            else if(newVal < config.equipment[type]) for(let i=0; i<config.equipment[type]-newVal; i++) removeLastItem(type,'equipment');
+            config.equipment[type] = newVal;
+            document.getElementById(`equip_${type}`).innerText = newVal;
+            rebuildScene();
+        }
+
+        function syncUI() {
+            document.querySelectorAll('[data-length]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-length="${config.dims.length}"]`).classList.add('selected');
+            document.querySelectorAll('[data-width]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-width="${config.dims.width}"]`).classList.add('selected');
+            document.querySelectorAll('[data-height]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-height="${config.dims.height}"]`).classList.add('selected');
+            document.querySelectorAll('[data-walls]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-walls="${config.wallsCount}"]`).classList.add('selected');
+            document.getElementById('wallColorPicker').value = config.wallColor;
+            document.getElementById('floorColorPicker').value = config.floorColor;
+            document.querySelectorAll('[data-wallmat]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-wallmat="${config.wallMaterial}"]`).classList.add('selected');
+            document.querySelectorAll('[data-floortype]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-floortype="${config.floorType}"]`).classList.add('selected');
+            document.querySelectorAll('[data-lighttype]').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`[data-lighttype="${config.lightType}"]`).classList.add('selected');
+            document.getElementById('lampCountVal').innerText = config.lampCount;
+            buildFurnitureUI();
+            buildEquipmentUI();
+        }
+
+        function resetConfig() {
+            if(selectedObj) { highlightObject(selectedObj, false); selectedObj = null; selectedId = null; }
+            config = {
+                dims: { length:4, width:3, height:2.5 },
+                wallsCount:3, wallColor:'#ffffff', wallMaterial:'plastic',
+                floorColor:'#cccccc', floorType:'carpet', lightType:'warm', lampCount:2,
+                furniture: { table:0, chair:0, counter:0, shelf:0 },
+                equipment: { monitor:0, speaker:0, camera:0, banner:0 },
+                items: []
+            };
+            nextId = 1;
             syncUI();
-        }));
+            rebuildScene();
+        }
+
+        function saveToFile() {
+            const dataStr = JSON.stringify(config, null, 2);
+            const blob = new Blob([dataStr], { type:'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'booth_config.json'; a.click();
+            URL.revokeObjectURL(url);
+            alert('Конфигурация сохранена');
+        }
+
+        function loadFromFile(file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    config = JSON.parse(e.target.result);
+                    syncUI();
+                    rebuildScene();
+                    document.getElementById('modeModal').style.display = 'none';
+                } catch(err) { alert('Ошибка загрузки файла'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function attachEvents() {
+            document.getElementById('lengthOpts').querySelectorAll('[data-length]').forEach(btn => btn.addEventListener('click', e => { config.dims.length = parseFloat(e.target.dataset.length); rebuildScene(); syncUI(); }));
+            document.getElementById('widthOpts').querySelectorAll('[data-width]').forEach(btn => btn.addEventListener('click', e => { config.dims.width = parseFloat(e.target.dataset.width); rebuildScene(); syncUI(); }));
+            document.getElementById('heightOpts').querySelectorAll('[data-height]').forEach(btn => btn.addEventListener('click', e => { config.dims.height = parseFloat(e.target.dataset.height); rebuildScene(); syncUI(); }));
+            document.getElementById('wallsCountOpts').querySelectorAll('[data-walls]').forEach(btn => btn.addEventListener('click', e => { config.wallsCount = parseInt(e.target.dataset.walls); rebuildScene(); syncUI(); }));
+            document.getElementById('wallColorPicker').addEventListener('change', e => { config.wallColor = e.target.value; rebuildScene(); });
+            document.getElementById('floorColorPicker').addEventListener('change', e => { config.floorColor = e.target.value; rebuildScene(); });
+            document.getElementById('wallMatOpts').querySelectorAll('[data-wallmat]').forEach(btn => btn.addEventListener('click', e => { config.wallMaterial = e.target.dataset.wallmat; rebuildScene(); syncUI(); }));
+            document.getElementById('floorTypeOpts').querySelectorAll('[data-floortype]').forEach(btn => btn.addEventListener('click', e => { config.floorType = e.target.dataset.floortype; rebuildScene(); syncUI(); }));
+            document.getElementById('lightTypeOpts').querySelectorAll('[data-lighttype]').forEach(btn => btn.addEventListener('click', e => { config.lightType = e.target.dataset.lighttype; rebuildScene(); syncUI(); }));
+            document.getElementById('lampPlus').addEventListener('click', () => { if(config.lampCount < 8){ config.lampCount++; document.getElementById('lampCountVal').innerText = config.lampCount; rebuildScene(); } });
+            document.getElementById('lampMinus').addEventListener('click', () => { if(config.lampCount > 0){ config.lampCount--; document.getElementById('lampCountVal').innerText = config.lampCount; rebuildScene(); } });
+            document.getElementById('saveBtn').addEventListener('click', saveToFile);
+            document.getElementById('resetBtn').addEventListener('click', resetConfig);
+            document.getElementById('loadConfigBtn').addEventListener('click', () => document.getElementById('configFileInput').click());
+            document.getElementById('configFileInput').addEventListener('change', e => { if(e.target.files[0]) loadFromFile(e.target.files[0]); });
+            document.querySelectorAll('.category-header').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('active')));
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => {
+                currentLang = btn.dataset.lang;
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                applyLanguage();
+                syncUI();
+            }));
+        }
+
+        function startNew() {
+            document.getElementById('modeModal').style.display = 'none';
+            initThree();
+            attachEvents();
+            syncUI();
+            rebuildScene();
+            applyLanguage();
+        }
+
+        document.getElementById('newModeBtn').addEventListener('click', startNew);
+        document.getElementById('loadModeBtn').addEventListener('click', () => {
+            document.getElementById('configFileInput').click();
+            document.getElementById('configFileInput').onchange = (e) => {
+                if(e.target.files[0]) { loadFromFile(e.target.files[0]); initThree(); attachEvents(); applyLanguage(); }
+            };
+        });
+
+        // Автозапуск
+        startNew();
     }
-
-    function startNew() {
-        document.getElementById('modeModal').style.display = 'none';
-        initThree();
-        attachEvents();
-        syncUI();
-        rebuildScene();
-        applyLanguage();
-    }
-
-    document.getElementById('newModeBtn').addEventListener('click', startNew);
-    document.getElementById('loadModeBtn').addEventListener('click', () => {
-        document.getElementById('configFileInput').click();
-        document.getElementById('configFileInput').onchange = (e) => {
-            if(e.target.files[0]) { loadFromFile(e.target.files[0]); initThree(); attachEvents(); applyLanguage(); }
-        };
-    });
-
-    setTimeout(() => { if(document.getElementById('modeModal').style.display !== 'none') startNew(); }, 100);
 </script>
 </body>
 </html>
