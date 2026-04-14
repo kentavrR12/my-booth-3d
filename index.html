@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Booth Configurator</title>
+    <title>3D Booth Configurator Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
@@ -297,17 +297,18 @@
             border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .loading-message {
+        .selected-info {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            padding: 20px 40px;
-            border-radius: 20px;
-            font-size: 16px;
+            top: 20px; right: 20px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 12px 18px;
+            border-radius: 40px;
+            font-size: 13px;
             pointer-events: none;
-            z-index: 50;
+            border: 2px solid #ffdd66;
+            color: #ffdd66;
+            font-weight: 600;
         }
 
         @media (max-width: 768px) {
@@ -465,11 +466,11 @@
         <div class="info-panel" id="infoText">
             🖱️ Клик по объекту → выделить+тащить | ЛКМ по фону → вращать | ПКМ → панорама
         </div>
+        <div id="selectedInfo" style="display:none;"></div>
     </div>
 </div>
 
 <script>
-    // ============ ПРОВЕРКА THREE.JS ============
     if (typeof THREE === 'undefined') {
         document.body.innerHTML = '<div style="color:red; padding:50px; font-size:20px;">Ошибка: Three.js не загрузился. Проверьте интернет-соединение.</div>';
         throw new Error('Three.js library not loaded');
@@ -477,7 +478,6 @@
 
     console.log('✅ Three.js loaded successfully');
 
-    // ============ ПЕРЕВОДЫ ============
     const translations = {
         ru: {
             title:"🎨 Booth Designer", subtitle:"Клик по объекту — выделить и перетащить",
@@ -546,7 +546,6 @@
         document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
         document.getElementById('equipLabel').innerHTML = t.equipLabel;
         document.getElementById('totalLabel').innerText = t.totalLabel;
-        document.getElementById('infoText').innerHTML = "🖱️ Клик по объекту → выделить+тащить | ЛКМ по фону → вращать | ПКМ → панорама";
         document.querySelectorAll('[data-wallmat]').forEach(btn => { if(t[btn.dataset.wallmat]) btn.innerText = t[btn.dataset.wallmat]; });
         document.querySelectorAll('[data-floortype]').forEach(btn => { if(t[btn.dataset.floortype]) btn.innerText = t[btn.dataset.floortype]; });
         document.querySelectorAll('[data-lighttype]').forEach(btn => { if(t[btn.dataset.lighttype]) btn.innerText = t[btn.dataset.lighttype]; });
@@ -572,7 +571,6 @@
         });
     }
 
-    // ============ КОНФИГУРАЦИЯ ============
     let config = {
         dims: { length:4, width:3, height:2.5 },
         wallsCount: 3,
@@ -596,7 +594,6 @@
         lamp: 50
     };
 
-    // ============ 3D ГЛОБАЛЬНЫЕ ============
     let scene, camera, renderer, boothGroup;
     let orbitX = 0.8, orbitY = 0.5, radius = 7;
     let center = new THREE.Vector3(0, 1.2, 0);
@@ -616,7 +613,6 @@
     let lamps = [];
     let originalMaterials = new Map();
 
-    // ============ ТЕКСТУРЫ ============
     function createWoodTexture() {
         const canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512;
         const ctx = canvas.getContext('2d');
@@ -673,7 +669,6 @@
         }
     }
 
-    // ============ СОЗДАНИЕ 3D ОБЪЕКТОВ ============
     function makeMat(color, roughness=0.5, metalness=0.1) {
         return new THREE.MeshStandardMaterial({ color, roughness, metalness });
     }
@@ -789,7 +784,6 @@
         return grp;
     }
 
-    // ============ ФАБРИКА ОБЪЕКТОВ ============
     function create3DObject(type, id, x, z) {
         let obj = null;
         switch(type) {
@@ -806,10 +800,10 @@
         if(obj) {
             obj.userData.itemId = id;
             obj.userData.itemType = type;
+            obj.userData.isSelectableGroup = true;
             obj.traverse(child => {
                 if(child.isMesh) {
-                    child.userData.itemId = id;
-                    child.userData.rootGroup = obj;
+                    child.userData.selectableGroupId = id;
                     if(child.material) {
                         originalMaterials.set(child.uuid, {
                             color: child.material.color ? child.material.color.clone() : null,
@@ -822,7 +816,6 @@
         return obj;
     }
 
-    // ============ ПОДСВЕТКА ============
     function highlightObject(obj, highlight) {
         if(!obj) return;
         obj.traverse(child => {
@@ -842,7 +835,6 @@
         });
     }
 
-    // ============ ПОСТРОЕНИЕ СЦЕНЫ ============
     function rebuildScene() {
         while(boothGroup.children.length) boothGroup.remove(boothGroup.children[0]);
         itemMap.clear();
@@ -906,7 +898,6 @@
         document.getElementById('totalPrice').innerHTML = `${Math.round(total).toLocaleString()} €`;
     }
 
-    // ============ DRAG & DROP ============
     function getCanvasRay(event) {
         const rect = renderer.domElement.getBoundingClientRect();
         const mouse = new THREE.Vector2(
@@ -925,15 +916,6 @@
         return null;
     }
 
-    function findRootGroup(mesh) {
-        let node = mesh;
-        while(node) {
-            if(node.userData && node.userData.itemId) return node;
-            node = node.parent;
-        }
-        return null;
-    }
-
     function trySelectObject(event) {
         const raycaster = getCanvasRay(event);
         const allMeshes = [];
@@ -944,15 +926,15 @@
         const intersects = raycaster.intersectObjects(allMeshes, false);
         if(intersects.length > 0) {
             const hitMesh = intersects[0].object;
-            const root = findRootGroup(hitMesh);
-            if(root && root.userData.itemId) {
-                return root;
+            const groupId = hitMesh.userData.selectableGroupId;
+            if(groupId) {
+                const rootObj = itemMap.get(groupId);
+                if(rootObj) return rootObj;
             }
         }
         return null;
     }
 
-    // ============ ИНИЦИАЛИЗАЦИЯ THREE ============
     function initThree() {
         const canvas = document.getElementById('canvas');
         const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -1022,11 +1004,14 @@
                 const p = getPlaneIntersect(e, dragPlane);
                 if(p) dragOffsetVec.copy(selectedObj.position).sub(p);
                 highlightObject(selectedObj, true);
+                document.getElementById('selectedInfo').innerText = `✓ Выбран: ${selectedObj.userData.itemType}`;
+                document.getElementById('selectedInfo').style.display = 'block';
                 return;
             } else {
                 if(selectedObj) {
                     highlightObject(selectedObj, false);
                     selectedObj = null; selectedId = null;
+                    document.getElementById('selectedInfo').style.display = 'none';
                 }
                 isOrbiting = true;
             }
@@ -1097,7 +1082,6 @@
         renderer.render(scene, camera);
     }
 
-    // ============ UI ============
     function buildFurnitureUI() {
         const container = document.getElementById('furnitureUI');
         container.innerHTML = '';
@@ -1190,7 +1174,7 @@
     }
 
     function resetConfig() {
-        if(selectedObj) { highlightObject(selectedObj, false); selectedObj = null; selectedId = null; }
+        if(selectedObj) { highlightObject(selectedObj, false); selectedObj = null; selectedId = null; document.getElementById('selectedInfo').style.display = 'none'; }
         config = {
             dims: { length:4, width:3, height:2.5 },
             wallsCount:3, wallColor:'#ffffff', wallMaterial:'plastic',
@@ -1269,7 +1253,6 @@
         };
     });
 
-    // Автозапуск
     startNew();
 </script>
 </body>
