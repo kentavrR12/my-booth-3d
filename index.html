@@ -2,1964 +2,875 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Booth Configurator - Interior Edition</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конфигуратор Выставочного Стенда Pro</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0f0c29 100%);
-            overflow: hidden;
-            color: #fff;
-        }
-
-        .app {
-            display: flex;
-            width: 100vw;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f0f1e; color: #fff; overflow: hidden; }
+        #canvas { display: block; width: 100%; height: 100vh; }
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 340px;
             height: 100vh;
-            overflow: hidden;
-        }
-
-        .sidebar {
-            width: 420px;
-            background: rgba(20, 24, 50, 0.7);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            flex-direction: column;
+            background: rgba(20, 20, 40, 0.85);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
             overflow-y: auto;
-            padding: 28px 24px;
-            z-index: 10;
-            box-shadow: inset -1px 0 0 rgba(255,255,255,0.05);
-        }
-
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.1);
-            border-radius: 3px;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        .sidebar-header {
-            margin-bottom: 32px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar-header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #ffffff 0%, #b0b0ff 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 6px;
-        }
-
-        .sidebar-header p {
-            font-size: 12px;
-            opacity: 0.6;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .category {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 16px;
-            margin-bottom: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .category:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .category-header {
-            padding: 16px 18px;
-            background: rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            font-size: 14px;
-            letter-spacing: 0.3px;
-            transition: all 0.2s;
-        }
-
-        .category-header:hover {
-            background: rgba(0, 0, 0, 0.3);
-        }
-
-        .category-header span:last-child {
-            font-size: 12px;
-            opacity: 0.6;
-            transition: transform 0.3s;
-        }
-
-        .category.active .category-header span:last-child {
-            transform: rotate(180deg);
-        }
-
-        .category-content {
-            padding: 0 18px;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .category.active .category-content {
-            max-height: 800px;
-            padding: 18px;
-        }
-
-        .option-group {
-            margin-bottom: 20px;
-        }
-
-        .option-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: rgba(255, 255, 255, 0.5);
-            display: block;
-            margin-bottom: 10px;
-        }
-
-        .option-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .option-item {
-            background: rgba(100, 120, 180, 0.1);
-            border: 1.5px solid rgba(100, 120, 180, 0.3);
-            padding: 8px 14px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .option-item:hover {
-            background: rgba(100, 120, 180, 0.2);
-            border-color: rgba(100, 120, 180, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .option-item.selected {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
-            color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-            font-weight: 600;
-        }
-
-        .color-picker {
-            width: 100%;
-            height: 44px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1.5px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .color-picker:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.4);
-        }
-
-        .counter-control {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 8px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .counter-btn {
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid rgba(102, 126, 234, 0.4);
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            color: white;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .counter-btn:hover {
-            background: rgba(102, 126, 234, 0.4);
-            border-color: rgba(102, 126, 234, 0.6);
-            transform: scale(1.05);
-        }
-
-        .counter-value {
-            font-size: 16px;
-            font-weight: 700;
-            min-width: 30px;
-            text-align: center;
-            color: #ffffff;
-        }
-
-        .rotation-control {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .rotation-btn {
-            background: rgba(100, 150, 200, 0.2);
-            border: 1px solid rgba(100, 150, 200, 0.4);
-            padding: 8px 12px;
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .rotation-btn:hover {
-            background: rgba(100, 150, 200, 0.4);
-            border-color: rgba(100, 150, 200, 0.6);
-        }
-
-        .rotation-slider {
-            width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(100, 150, 200, 0.2);
-            outline: none;
-            -webkit-appearance: none;
-            appearance: none;
-            margin-top: 8px;
-        }
-
-        .rotation-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-        }
-
-        .rotation-slider::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-        }
-
-        .price-section {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-            border-radius: 20px;
             padding: 20px;
-            margin-top: 24px;
-            text-align: center;
-            border: 1.5px solid rgba(102, 126, 234, 0.3);
-            backdrop-filter: blur(8px);
+            z-index: 10;
         }
-
-        .price-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: rgba(255, 255, 255, 0.5);
-            margin-bottom: 8px;
-        }
-
-        .price-value {
-            font-size: 36px;
-            font-weight: 800;
-            margin: 12px 0;
-            background: linear-gradient(135deg, #ffffff 0%, #d0d0ff 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: -1px;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 14px;
-        }
-
-        .btn {
-            flex: 1;
-            min-width: 100px;
-            padding: 10px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 12px;
-            border: none;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.08);
-            color: white;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-primary:hover {
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-            background: linear-gradient(135deg, #7a8eea 0%, #8a5bb2 100%);
-        }
-
-        .canvas-container {
-            flex: 1;
-            position: relative;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
-            overflow: hidden;
-        }
-
-        #canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .info-panel {
-            position: absolute;
-            bottom: 24px;
-            right: 24px;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(12px);
-            padding: 10px 16px;
-            border-radius: 50px;
-            font-size: 11px;
-            pointer-events: none;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            font-weight: 500;
-            letter-spacing: 0.3px;
-            max-width: 300px;
-        }
-
-        .selected-info {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(12px);
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-size: 13px;
-            pointer-events: none;
-            border: 2px solid rgba(255, 221, 102, 0.6);
-            color: #ffdd66;
-            font-weight: 600;
-            letter-spacing: 0.3px;
-        }
-
-        .lang-bar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            display: flex;
-            gap: 6px;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(12px);
-            padding: 6px 8px;
-            border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .lang-btn {
-            background: transparent;
-            border: 1px solid transparent;
-            color: rgba(255, 255, 255, 0.6);
-            padding: 6px 12px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 11px;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .lang-btn:hover {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .lang-btn.active {
-            background: rgba(102, 126, 234, 0.3);
-            border-color: rgba(102, 126, 234, 0.5);
-            color: white;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                max-height: 50%;
-                padding: 20px;
-            }
-
-            .app {
-                flex-direction: column;
-            }
-
-            .canvas-container {
-                height: 50%;
-            }
-
-            .sidebar-header h1 {
-                font-size: 24px;
-            }
-        }
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 12px; }
+        .btn { width: 100%; padding: 10px; margin: 6px 0; background: rgba(100, 150, 255, 0.2); border: 1px solid rgba(100, 150, 255, 0.5); color: #fff; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .btn:hover { background: rgba(100, 150, 255, 0.4); border-color: rgba(100, 150, 255, 0.8); }
+        .btn.active { background: rgba(100, 150, 255, 0.6); border-color: rgba(100, 150, 255, 1); }
+        .btn-small { padding: 8px 12px; font-size: 12px; margin: 4px 2px; display: inline-block; width: auto; }
+        .slider-group { margin: 12px 0; }
+        .slider-label { font-size: 12px; color: #aaa; margin-bottom: 6px; display: flex; justify-content: space-between; }
+        input[type="range"] { width: 100%; }
+        input[type="color"] { width: 100%; height: 40px; border: none; border-radius: 6px; cursor: pointer; }
+        .color-palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+        .color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-swatch:hover { border-color: #fff; transform: scale(1.05); }
+        #info { position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #888; background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; max-width: 300px; }
+        #selectedPanel { background: rgba(100, 150, 255, 0.1); border: 1px solid rgba(100, 150, 255, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+        #selectedPanel h3 { font-size: 14px; margin-bottom: 12px; color: #6af; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-
-<div class="lang-bar">
-    <button class="lang-btn active" data-lang="ru">RU</button>
-    <button class="lang-btn" data-lang="en">EN</button>
-    <button class="lang-btn" data-lang="lv">LV</button>
-</div>
-
-<div class="app">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h1 id="title">✨ Booth Designer</h1>
-            <p id="subtitle">Interior Edition</p>
-        </div>
-
-        <div class="category active">
-            <div class="category-header"><span id="dimLabel">📐 Размеры</span><span>▼</span></div>
-            <div class="category-content">
-                <div class="option-group">
-                    <label id="lenLabel" class="option-label">Длина (м)</label>
-                    <div class="option-items" id="lengthOpts">
-                        <button class="option-item" data-length="2">2</button>
-                        <button class="option-item" data-length="3">3</button>
-                        <button class="option-item selected" data-length="4">4</button>
-                        <button class="option-item" data-length="5">5</button>
-                        <button class="option-item" data-length="6">6</button>
-                        <button class="option-item" data-length="8">8</button>
-                    </div>
+    <div id="ui">
+        <h1 style="font-size: 20px; margin-bottom: 24px;">Конфигуратор Pro</h1>
+        
+        <div id="selectedPanel" class="hidden">
+            <h3 id="selectedName">Выбран объект</h3>
+            <div class="section">
+                <div class="section-title">🎨 Цвет</div>
+                <input type="color" id="colorPicker" onchange="changeSelectedColor(this.value)">
+                <div class="color-palette">
+                    <div class="color-swatch" style="background: #3a3a3a;" onclick="changeSelectedColor('#3a3a3a')"></div>
+                    <div class="color-swatch" style="background: #8b7355;" onclick="changeSelectedColor('#8b7355')"></div>
+                    <div class="color-swatch" style="background: #4a7bdb;" onclick="changeSelectedColor('#4a7bdb')"></div>
+                    <div class="color-swatch" style="background: #db4a4a;" onclick="changeSelectedColor('#db4a4a')"></div>
+                    <div class="color-swatch" style="background: #4adb7b;" onclick="changeSelectedColor('#4adb7b')"></div>
+                    <div class="color-swatch" style="background: #dbb04a;" onclick="changeSelectedColor('#dbb04a')"></div>
+                    <div class="color-swatch" style="background: #1a1a1a;" onclick="changeSelectedColor('#1a1a1a')"></div>
+                    <div class="color-swatch" style="background: #f5f5f5;" onclick="changeSelectedColor('#f5f5f5')"></div>
                 </div>
-                <div class="option-group">
-                    <label id="widLabel" class="option-label">Ширина (м)</label>
-                    <div class="option-items" id="widthOpts">
-                        <button class="option-item" data-width="2">2</button>
-                        <button class="option-item selected" data-width="3">3</button>
-                        <button class="option-item" data-width="4">4</button>
-                        <button class="option-item" data-width="5">5</button>
-                        <button class="option-item" data-width="6">6</button>
-                    </div>
-                </div>
-                <div class="option-group">
-                    <label id="heiLabel" class="option-label">Высота (м)</label>
-                    <div class="option-items" id="heightOpts">
-                        <button class="option-item" data-height="2">2</button>
-                        <button class="option-item selected" data-height="2.5">2.5</button>
-                        <button class="option-item" data-height="3">3</button>
-                        <button class="option-item" data-height="3.5">3.5</button>
-                    </div>
-                </div>
+            </div>
+            <div class="section">
+                <div class="section-title">🔄 Управление</div>
+                <button class="btn btn-small" onclick="rotateSelected(45)">↻ +45°</button>
+                <button class="btn btn-small" onclick="rotateSelected(-45)">↺ -45°</button>
+                <button class="btn btn-small" style="width: calc(100% - 8px);" onclick="deleteSelected()">🗑️ Удалить</button>
             </div>
         </div>
 
-        <div class="category">
-            <div class="category-header"><span id="wallsLabel">🧱 Стены</span><span>▼</span></div>
-            <div class="category-content">
-                <div class="option-group">
-                    <label id="wallsCountLabel" class="option-label">Количество стен</label>
-                    <div class="option-items" id="wallsCountOpts">
-                        <button class="option-item" data-walls="1">1 стена</button>
-                        <button class="option-item" data-walls="2">2 стены</button>
-                        <button class="option-item selected" data-walls="3">3 стены</button>
-                    </div>
-                </div>
-                <div class="option-group">
-                    <label id="wallColorLabel" class="option-label">Цвет стен</label>
-                    <input type="color" id="wallColorPicker" class="color-picker" value="#ffffff">
-                </div>
-                <div class="option-group">
-                    <label id="wallMatLabel" class="option-label">Материал</label>
-                    <div class="option-items" id="wallMatOpts">
-                        <button class="option-item selected" data-wallmat="plastic">Пластик</button>
-                        <button class="option-item" data-wallmat="wood">Дерево</button>
-                        <button class="option-item" data-wallmat="metal">Металл</button>
-                        <button class="option-item" data-wallmat="fabric">Ткань</button>
-                    </div>
-                </div>
+        <div class="section">
+            <div class="section-title">📐 Размеры Стенда</div>
+            <div class="slider-group">
+                <div class="slider-label">Длина (м) <span id="lengthVal">2</span></div>
+                <input type="range" id="lengthSlider" min="2" max="8" value="2" step="0.5">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label">Ширина (м) <span id="widthVal">3</span></div>
+                <input type="range" id="widthSlider" min="2" max="8" value="3" step="0.5">
             </div>
         </div>
 
-        <div class="category">
-            <div class="category-header"><span id="floorLabel">🏢 Пол</span><span>▼</span></div>
-            <div class="category-content">
-                <div class="option-group">
-                    <label id="floorColorLabel" class="option-label">Цвет пола</label>
-                    <input type="color" id="floorColorPicker" class="color-picker" value="#cccccc">
-                </div>
-                <div class="option-group">
-                    <label id="floorTypeLabel" class="option-label">Тип покрытия</label>
-                    <div class="option-items" id="floorTypeOpts">
-                        <button class="option-item selected" data-floortype="carpet">Ковролин</button>
-                        <button class="option-item" data-floortype="tile">Плитка</button>
-                        <button class="option-item" data-floortype="wood">Паркет</button>
-                    </div>
-                </div>
-            </div>
+        <div class="section">
+            <div class="section-title">🛋️ Мебель & Оборудование</div>
+            <button class="btn" onclick="addObject('chair')">+ Стул</button>
+            <button class="btn" onclick="addObject('sofa')">+ Диван</button>
+            <button class="btn" onclick="addObject('table')">+ Стол</button>
+            <button class="btn" onclick="addObject('monitor')">+ Монитор</button>
+            <button class="btn" onclick="addObject('showcase')">+ Витрина</button>
+            <button class="btn" onclick="addObject('speaker')">+ Динамик</button>
+            <button class="btn" onclick="addObject('camera')">+ Камера</button>
+            <button class="btn" onclick="addObject('banner')">+ Баннер</button>
+            <button class="btn" onclick="addObject('counter')">+ Стойка</button>
+            <button class="btn" onclick="addObject('shelf')">+ Полка</button>
         </div>
 
-        <div class="category">
-            <div class="category-header"><span id="furnLabel">🪑 Мебель</span><span>▼</span></div>
-            <div class="category-content" id="furnitureUI"></div>
-        </div>
-
-        <div class="category">
-            <div class="category-header"><span id="rotLabel">🔄 Вращение</span><span>▼</span></div>
-            <div class="category-content">
-                <div class="option-group">
-                    <label id="rotInfoLabel" class="option-label">Выберите объект для вращения</label>
-                    <div class="rotation-control">
-                        <button class="rotation-btn" id="rotLeft">↺ -45°</button>
-                        <button class="rotation-btn" id="rotRight">↻ +45°</button>
-                    </div>
-                    <input type="range" id="rotationSlider" class="rotation-slider" min="0" max="360" value="0" disabled>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 8px;" id="rotAngleDisplay">Угол: 0°</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="category">
-            <div class="category-header"><span id="lightLabel">💡 Освещение</span><span>▼</span></div>
-            <div class="category-content">
-                <div class="option-group">
-                    <label id="lightTypeLabel" class="option-label">Тип света</label>
-                    <div class="option-items" id="lightTypeOpts">
-                        <button class="option-item selected" data-lighttype="warm">Тёплый</button>
-                        <button class="option-item" data-lighttype="cool">Холодный</button>
-                        <button class="option-item" data-lighttype="neutral">Нейтральный</button>
-                    </div>
-                </div>
-                <div class="option-group">
-                    <label id="lampCountLabel" class="option-label">Количество ламп</label>
-                    <div class="counter-control">
-                        <button class="counter-btn" id="lampMinus">−</button>
-                        <span class="counter-value" id="lampCountVal">2</span>
-                        <button class="counter-btn" id="lampPlus">+</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="category">
-            <div class="category-header"><span id="equipLabel">📺 Оборудование</span><span>▼</span></div>
-            <div class="category-content" id="equipmentUI"></div>
-        </div>
-
-        <div class="price-section">
-            <div class="price-label" id="totalLabel">Итоговая стоимость</div>
-            <div class="price-value" id="totalPrice">0 €</div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="saveBtn">💾 Сохранить</button>
-                <button class="btn" id="resetBtn">🔄 Сброс</button>
-            </div>
+        <div class="section">
+            <div class="section-title">⚙️ Сцена</div>
+            <button class="btn" onclick="clearAll()">Очистить всё</button>
         </div>
     </div>
 
-    <div class="canvas-container">
-        <canvas id="canvas"></canvas>
-        <div class="info-panel" id="infoText">
-            🖱️ Клик на объект → выделить | ПКМ → панорама | Колесо → зум | R → вращать
-        </div>
-        <div id="selectedInfo" style="display:none;"></div>
+    <div id="info">
+        <div>Клик: выбрать | Перетащить: переместить | R: повернуть | Удалить: удалить</div>
+        <div id="selectedInfo" style="margin-top: 8px; color: #6a9;">Ничего не выбрано</div>
     </div>
-</div>
 
-<script>
-    if (typeof THREE === 'undefined') {
-        document.body.innerHTML = '<div style="color:red; padding:50px; font-size:20px;">Ошибка: Three.js не загрузился.</div>';
-        throw new Error('Three.js not loaded');
-    }
-
-    const translations = {
-        ru: {
-            title:"✨ Booth Designer", subtitle:"Interior Edition",
-            dimLabel:"📐 Размеры", lenLabel:"Длина (м)", widLabel:"Ширина (м)", heiLabel:"Высота (м)",
-            wallsLabel:"🧱 Стены", wallsCountLabel:"Количество стен", wallColorLabel:"Цвет стен", wallMatLabel:"Материал",
-            floorLabel:"🏢 Пол", floorColorLabel:"Цвет пола", floorTypeLabel:"Тип покрытия",
-            furnLabel:"🪑 Мебель", rotLabel:"🔄 Вращение", rotInfoLabel:"Выберите объект для вращения",
-            lightLabel:"💡 Освещение", lightTypeLabel:"Тип света", lampCountLabel:"Количество ламп",
-            equipLabel:"📺 Оборудование", totalLabel:"Итоговая стоимость",
-            plastic:"Пластик", wood:"Дерево", metal:"Металл", fabric:"Ткань",
-            carpet:"Ковролин", tile:"Плитка", parquet:"Паркет",
-            warm:"Тёплый", cool:"Холодный", neutral:"Нейтральный",
-            table:"Стол", chair:"Стул", counter:"Стойка", shelf:"Полка",
-            monitor:"Монитор", speaker:"Динамик", camera:"Камера", banner:"Баннер",
-            oneWall:"1 стена", twoWalls:"2 стены", threeWalls:"3 стены"
-        },
-        en: {
-            title:"✨ Booth Designer", subtitle:"Interior Edition",
-            dimLabel:"📐 Dimensions", lenLabel:"Length (m)", widLabel:"Width (m)", heiLabel:"Height (m)",
-            wallsLabel:"🧱 Walls", wallsCountLabel:"Number of walls", wallColorLabel:"Wall Color", wallMatLabel:"Material",
-            floorLabel:"🏢 Floor", floorColorLabel:"Floor Color", floorTypeLabel:"Floor Type",
-            furnLabel:"🪑 Furniture", rotLabel:"🔄 Rotation", rotInfoLabel:"Select object to rotate",
-            lightLabel:"💡 Lighting", lightTypeLabel:"Light Type", lampCountLabel:"Lamps",
-            equipLabel:"📺 Equipment", totalLabel:"Total Price",
-            plastic:"Plastic", wood:"Wood", metal:"Metal", fabric:"Fabric",
-            carpet:"Carpet", tile:"Tile", parquet:"Parquet",
-            warm:"Warm", cool:"Cool", neutral:"Neutral",
-            table:"Table", chair:"Chair", counter:"Counter", shelf:"Shelf",
-            monitor:"Monitor", speaker:"Speaker", camera:"Camera", banner:"Banner",
-            oneWall:"1 wall", twoWalls:"2 walls", threeWalls:"3 walls"
-        },
-        lv: {
-            title:"✨ Stenda Dizainers", subtitle:"Interior Edition",
-            dimLabel:"📐 Izmēri", lenLabel:"Garums (m)", widLabel:"Platums (m)", heiLabel:"Augstums (m)",
-            wallsLabel:"🧱 Sienas", wallsCountLabel:"Sienu skaits", wallColorLabel:"Sienu krāsa", wallMatLabel:"Materiāls",
-            floorLabel:"🏢 Grīda", floorColorLabel:"Grīdas krāsa", floorTypeLabel:"Grīdas tips",
-            furnLabel:"🪑 Mēbeles", rotLabel:"🔄 Rotācija", rotInfoLabel:"Izvēlieties objektu rotācijai",
-            lightLabel:"💡 Apgaismojums", lightTypeLabel:"Gaismas tips", lampCountLabel:"Lampu skaits",
-            equipLabel:"📺 Aprīkojums", totalLabel:"Kopējā cena",
-            plastic:"Plastmasa", wood:"Koks", metal:"Metāls", fabric:"Audums",
-            carpet:"Paklājs", tile:"Flīzes", parquet:"Parkets",
-            warm:"Silts", cool:"Vēss", neutral:"Neitrāls",
-            table:"Galds", chair:"Krēsls", counter:"Skaitītājs", shelf:"Plaukts",
-            monitor:"Monitors", speaker:"Skaļrunis", camera:"Kamera", banner:"Baneris",
-            oneWall:"1 siena", twoWalls:"2 sienas", threeWalls:"3 sienas"
-        }
-    };
-
-    let currentLang = 'ru';
-
-    function applyLanguage() {
-        const t = translations[currentLang];
-        document.getElementById('title').innerText = t.title;
-        document.getElementById('subtitle').innerText = t.subtitle;
-        document.getElementById('dimLabel').innerHTML = t.dimLabel;
-        document.getElementById('lenLabel').innerText = t.lenLabel;
-        document.getElementById('widLabel').innerText = t.widLabel;
-        document.getElementById('heiLabel').innerText = t.heiLabel;
-        document.getElementById('wallsLabel').innerHTML = t.wallsLabel;
-        document.getElementById('wallsCountLabel').innerText = t.wallsCountLabel;
-        document.getElementById('wallColorLabel').innerText = t.wallColorLabel;
-        document.getElementById('wallMatLabel').innerText = t.wallMatLabel;
-        document.getElementById('floorLabel').innerHTML = t.floorLabel;
-        document.getElementById('floorColorLabel').innerText = t.floorColorLabel;
-        document.getElementById('floorTypeLabel').innerText = t.floorTypeLabel;
-        document.getElementById('furnLabel').innerHTML = t.furnLabel;
-        document.getElementById('rotLabel').innerHTML = t.rotLabel;
-        document.getElementById('rotInfoLabel').innerText = t.rotInfoLabel;
-        document.getElementById('lightLabel').innerHTML = t.lightLabel;
-        document.getElementById('lightTypeLabel').innerText = t.lightTypeLabel;
-        document.getElementById('lampCountLabel').innerText = t.lampCountLabel;
-        document.getElementById('equipLabel').innerHTML = t.equipLabel;
-        document.getElementById('totalLabel').innerText = t.totalLabel;
-    }
-
-    let config = {
-        dims: { length:4, width:3, height:2.5 },
-        wallsCount: 3,
-        wallColor: '#ffffff',
-        wallMaterial: 'plastic',
-        floorColor: '#cccccc',
-        floorType: 'carpet',
-        lightType: 'warm',
-        lampCount: 2,
-        furniture: { table:0, chair:0, counter:0, shelf:0 },
-        equipment: { monitor:0, speaker:0, camera:0, banner:0 },
-        items: []
-    };
-    let nextId = 1;
-    const prices = {
-        baseSqm: 120,
-        wallMat: { plastic:30, wood:80, metal:110, fabric:45 },
-        floor: { carpet:25, tile:35, wood:55 },
-        furniture: { table:180, chair:85, counter:320, shelf:210 },
-        equipment: { monitor:650, speaker:220, camera:480, banner:130 },
-        lamp: 50
-    };
-
-    let scene, camera, renderer, boothGroup;
-    let orbitX = 0.8, orbitY = 0.5, radius = 7;
-    let center = new THREE.Vector3(0, 1.2, 0);
-    let panX = 0, panY = 0, panZ = 0;
-
-    let isOrbiting = false;
-    let isPanning = false;
-    let isDraggingObj = false;
-    let lastMousePos = { x:0, y:0 };
-
-    let selectedObj = null;
-    let selectedId = null;
-    let dragPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
-    let dragOffsetVec = new THREE.Vector3();
-
-    let itemMap = new Map();
-    let lamps = [];
-    let originalMaterials = new Map();
-
-    // Advanced texture creation
-    function createAdvancedWoodTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = '#c7a47b';
-        ctx.fillRect(0, 0, 512, 512);
-        
-        for(let i = 0; i < 200; i++) {
-            const hue = Math.random() * 20 - 10;
-            ctx.fillStyle = `hsl(${30 + hue}, 40%, ${40 + Math.random() * 10}%)`;
-            ctx.fillRect(i * 20, 0, 10, 512);
-        }
-        
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(2, 2);
-        return tex;
-    }
-
-    function createAdvancedTileTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = '#b0b0b0';
-        ctx.fillRect(0, 0, 512, 512);
-        
-        ctx.strokeStyle = '#808080';
-        ctx.lineWidth = 8;
-        for(let i = 0; i < 8; i++) {
-            ctx.beginPath();
-            ctx.moveTo(i * 64, 0);
-            ctx.lineTo(i * 64, 512);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, i * 64);
-            ctx.lineTo(512, i * 64);
-            ctx.stroke();
-        }
-        
-        ctx.fillStyle = 'rgba(0,0,0,0.05)';
-        for(let i = 0; i < 64; i++) {
-            ctx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 20, Math.random() * 20);
-        }
-        
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(4, 4);
-        return tex;
-    }
-
-    function createAdvancedParquetTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = '#b87c4f';
-        ctx.fillRect(0, 0, 512, 512);
-        
-        for(let i = 0; i < 20; i++) {
-            ctx.fillStyle = `hsl(${20}, ${50 + Math.random() * 20}%, ${50 + Math.random() * 10}%)`;
-            ctx.fillRect(i * 50, 0, 20, 512);
-        }
-        
-        const tex = new THREE.CanvasTexture(canvas);
-        tex.wrapS = THREE.RepeatWrapping;
-        tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(4, 4);
-        return tex;
-    }
-
-    function getWallMaterial() {
-        const color = new THREE.Color(config.wallColor);
-        switch(config.wallMaterial) {
-            case 'wood':
-                return new THREE.MeshStandardMaterial({
-                    map: createAdvancedWoodTexture(),
-                    roughness: 0.5,
-                    metalness: 0.1,
-                    envMapIntensity: 0.5
-                });
-            case 'metal':
-                return new THREE.MeshStandardMaterial({
-                    color,
-                    roughness: 0.15,
-                    metalness: 0.95,
-                    envMapIntensity: 1.0
-                });
-            case 'fabric':
-                return new THREE.MeshStandardMaterial({
-                    color,
-                    roughness: 0.95,
-                    metalness: 0,
-                    envMapIntensity: 0.2
-                });
-            default:
-                return new THREE.MeshStandardMaterial({
-                    color,
-                    roughness: 0.25,
-                    metalness: 0.15,
-                    envMapIntensity: 0.4
-                });
-        }
-    }
-
-    function getFloorMaterial() {
-        const color = new THREE.Color(config.floorColor);
-        switch(config.floorType) {
-            case 'tile':
-                return new THREE.MeshStandardMaterial({
-                    map: createAdvancedTileTexture(),
-                    roughness: 0.3,
-                    metalness: 0.05,
-                    envMapIntensity: 0.3
-                });
-            case 'wood':
-                return new THREE.MeshStandardMaterial({
-                    map: createAdvancedParquetTexture(),
-                    roughness: 0.6,
-                    metalness: 0.05,
-                    envMapIntensity: 0.3
-                });
-            default:
-                return new THREE.MeshStandardMaterial({
-                    color,
-                    roughness: 0.8,
-                    metalness: 0,
-                    envMapIntensity: 0.2
-                });
-        }
-    }
-
-    function makeMat(color, roughness = 0.5, metalness = 0.1) {
-        return new THREE.MeshStandardMaterial({ color, roughness, metalness, envMapIntensity: 0.5 });
-    }
-
-    // ========== ULTRA-DETAILED FURNITURE ==========
-
-    function createTable(x, z) {
-        const grp = new THREE.Group();
-        
-        const topMat = new THREE.MeshStandardMaterial({
-            color: 0xf5f5f5,
-            roughness: 0.15,
-            metalness: 0.0,
-            envMapIntensity: 0.8,
-            transparent: true,
-            opacity: 0.95
-        });
-        const topGeom = new THREE.BoxGeometry(1.4, 0.04, 0.75);
-        const top = new THREE.Mesh(topGeom, topMat);
-        top.position.y = 0.78;
-        top.castShadow = true;
-        top.receiveShadow = true;
-        grp.add(top);
-
-        const metalMat = new THREE.MeshStandardMaterial({
-            color: 0x2a2a2a,
-            roughness: 0.2,
-            metalness: 0.9,
-            envMapIntensity: 1.0
-        });
-
-        const legGeom = new THREE.BoxGeometry(0.08, 0.75, 0.04);
-        const leg1 = new THREE.Mesh(legGeom, metalMat);
-        leg1.position.set(-0.5, 0.38, 0);
-        leg1.rotation.z = Math.PI / 6;
-        leg1.castShadow = true;
-        grp.add(leg1);
-
-        const leg2 = new THREE.Mesh(legGeom, metalMat);
-        leg2.position.set(0.5, 0.38, 0);
-        leg2.rotation.z = -Math.PI / 6;
-        leg2.castShadow = true;
-        grp.add(leg2);
-
-        const crossGeom = new THREE.BoxGeometry(1.0, 0.04, 0.04);
-        const cross = new THREE.Mesh(crossGeom, metalMat);
-        cross.position.y = 0.15;
-        cross.castShadow = true;
-        grp.add(cross);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createChair(x, z) {
-        const grp = new THREE.Group();
-
-        // Сиденье
-        const seatMat = new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.7,
-            metalness: 0.0,
-            envMapIntensity: 0.3
-        });
-        const seatGeom = new THREE.BoxGeometry(0.52, 0.08, 0.48);
-        const seat = new THREE.Mesh(seatGeom, seatMat);
-        seat.position.y = 0.46;
-        seat.castShadow = true;
-        seat.receiveShadow = true;
-        grp.add(seat);
-
-        // Ножки (конусные, симметричные)
-        const legMat = new THREE.MeshStandardMaterial({
-            color: 0x4a4a4a,
-            roughness: 0.6,
-            metalness: 0.1,
-            envMapIntensity: 0.4
-        });
-        const legGeom = new THREE.CylinderGeometry(0.035, 0.025, 0.44, 8);
-        const legPositions = [[-0.2, 0.22, -0.18], [0.2, 0.22, -0.18], [-0.2, 0.22, 0.18], [0.2, 0.22, 0.18]];
-        legPositions.forEach(([lx, ly, lz]) => {
-            const leg = new THREE.Mesh(legGeom, legMat);
-            leg.position.set(lx, ly, lz);
-            leg.castShadow = true;
-            grp.add(leg);
-        });
-
-        // Спинка (РОВНАЯ, без наклонов)
-        const backMat = new THREE.MeshStandardMaterial({
-            color: 0x3a3a3a,
-            roughness: 0.7,
-            metalness: 0.0,
-            envMapIntensity: 0.3
-        });
-        const backGeom = new THREE.BoxGeometry(0.48, 0.56, 0.08);
-        const back = new THREE.Mesh(backGeom, backMat);
-        back.position.set(0, 0.78, -0.24);
-        // УБРАЛ rotation.z = 0.1 - это вызывало перекос!
-        back.castShadow = true;
-        grp.add(back);
-
-        // Подлокотники (симметричные, правильно расположенные)
-        const armMat = new THREE.MeshStandardMaterial({
-            color: 0x4a4a4a,
-            roughness: 0.6,
-            metalness: 0.1,
-            envMapIntensity: 0.4
-        });
-        const armGeom = new THREE.BoxGeometry(0.08, 0.25, 0.06);
-        const armLeft = new THREE.Mesh(armGeom, armMat);
-        armLeft.position.set(-0.27, 0.56, -0.02);
-        armLeft.castShadow = true;
-        grp.add(armLeft);
-
-        const armRight = new THREE.Mesh(armGeom, armMat);
-        armRight.position.set(0.27, 0.56, -0.02);
-        armRight.castShadow = true;
-        grp.add(armRight);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createCounter(x, z) {
-        const grp = new THREE.Group();
-
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xd4b896,
-            roughness: 0.4,
-            metalness: 0.05,
-            envMapIntensity: 0.5
-        });
-        const bodyGeom = new THREE.BoxGeometry(1.1, 0.95, 0.55);
-        const body = new THREE.Mesh(bodyGeom, bodyMat);
-        body.position.y = 0.475;
-        body.castShadow = true;
-        body.receiveShadow = true;
-        grp.add(body);
-
-        const topMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.2,
-            metalness: 0.1,
-            envMapIntensity: 0.8
-        });
-        const topGeom = new THREE.BoxGeometry(1.18, 0.05, 0.62);
-        const top = new THREE.Mesh(topGeom, topMat);
-        top.position.y = 0.975;
-        top.castShadow = true;
-        grp.add(top);
-
-        const ledMat = new THREE.MeshStandardMaterial({
-            color: 0x4466ff,
-            emissive: 0x4466ff,
-            emissiveIntensity: 0.6,
-            roughness: 0.3,
-            metalness: 0.2
-        });
-        const ledGeom = new THREE.BoxGeometry(1.1, 0.01, 0.55);
-        const led = new THREE.Mesh(ledGeom, ledMat);
-        led.position.y = 0.945;
-        grp.add(led);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createShelf(x, z) {
-        const grp = new THREE.Group();
-
-        const boardMat = new THREE.MeshStandardMaterial({
-            color: 0xaa8866,
-            roughness: 0.5,
-            metalness: 0.05,
-            envMapIntensity: 0.4
-        });
-        const boardGeom = new THREE.BoxGeometry(0.9, 0.04, 0.28);
-        const board = new THREE.Mesh(boardGeom, boardMat);
-        board.position.y = 1.2;
-        board.castShadow = true;
-        board.receiveShadow = true;
-        grp.add(board);
-
-        const bracketMat = new THREE.MeshStandardMaterial({
-            color: 0x555555,
-            roughness: 0.4,
-            metalness: 0.5,
-            envMapIntensity: 0.6
-        });
-        const bracketGeom = new THREE.BoxGeometry(0.08, 0.15, 0.08);
-        const bracketLeft = new THREE.Mesh(bracketGeom, bracketMat);
-        bracketLeft.position.set(-0.4, 1.08, 0);
-        bracketLeft.castShadow = true;
-        grp.add(bracketLeft);
-
-        const bracketRight = new THREE.Mesh(bracketGeom, bracketMat);
-        bracketRight.position.set(0.4, 1.08, 0);
-        bracketRight.castShadow = true;
-        grp.add(bracketRight);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createMonitor(x, z) {
-        const grp = new THREE.Group();
-
-        const frameMat = new THREE.MeshStandardMaterial({
-            color: 0x0a0a0a,
-            roughness: 0.3,
-            metalness: 0.4,
-            envMapIntensity: 0.7
-        });
-        const frameGeom = new THREE.BoxGeometry(1.0, 0.62, 0.08);
-        const frame = new THREE.Mesh(frameGeom, frameMat);
-        frame.position.y = 1.05;
-        frame.castShadow = true;
-        grp.add(frame);
-
-        const screenMat = new THREE.MeshStandardMaterial({
-            color: 0x0a0a1a,
-            emissive: 0x1a3a6a,
-            emissiveIntensity: 0.8,
-            roughness: 0.05,
-            metalness: 0.05
-        });
-        const screenGeom = new THREE.BoxGeometry(0.9, 0.52, 0.02);
-        const screen = new THREE.Mesh(screenGeom, screenMat);
-        screen.position.set(0, 1.05, 0.04);
-        screen.castShadow = true;
-        grp.add(screen);
-
-        const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.4,
-            metalness: 0.5,
-            envMapIntensity: 0.6
-        });
-        const baseGeom = new THREE.CylinderGeometry(0.25, 0.25, 0.04, 32);
-        const base = new THREE.Mesh(baseGeom, baseMat);
-        base.scale.z = 0.5;
-        base.position.y = 0.02;
-        base.castShadow = true;
-        base.receiveShadow = true;
-        grp.add(base);
-
-        const neckGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.8, 12);
-        const neck = new THREE.Mesh(neckGeom, baseMat);
-        neck.position.y = 0.42;
-        neck.castShadow = true;
-        grp.add(neck);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createSpeaker(x, z) {
-        const grp = new THREE.Group();
-
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.6,
-            metalness: 0.1,
-            envMapIntensity: 0.3
-        });
-        const bodyGeom = new THREE.BoxGeometry(0.38, 0.62, 0.28);
-        const body = new THREE.Mesh(bodyGeom, bodyMat);
-        body.position.y = 0.31;
-        body.castShadow = true;
-        body.receiveShadow = true;
-        grp.add(body);
-
-        const grillMat = new THREE.MeshStandardMaterial({
-            color: 0x0a0a0a,
-            roughness: 0.8,
-            metalness: 0.0,
-            envMapIntensity: 0.1
-        });
-        const grillGeom = new THREE.CylinderGeometry(0.14, 0.14, 0.02, 32);
-        const grill = new THREE.Mesh(grillGeom, grillMat);
-        grill.position.y = 0.31;
-        grill.rotation.x = Math.PI / 2;
-        grp.add(grill);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createCamera(x, z) {
-        const grp = new THREE.Group();
-
-        const domeMat = new THREE.MeshStandardMaterial({
-            color: 0xcccccc,
-            roughness: 0.3,
-            metalness: 0.2,
-            envMapIntensity: 0.6
-        });
-        const domeGeom = new THREE.SphereGeometry(0.14, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-        const dome = new THREE.Mesh(domeGeom, domeMat);
-        dome.position.y = 1.1;
-        dome.castShadow = true;
-        grp.add(dome);
-
-        const lensMat = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.1,
-            metalness: 0.3,
-            envMapIntensity: 0.8
-        });
-        const lensGeom = new THREE.SphereGeometry(0.08, 16, 12);
-        const lens = new THREE.Mesh(lensGeom, lensMat);
-        lens.position.y = 1.1;
-        grp.add(lens);
-
-        const ledMat = new THREE.MeshStandardMaterial({
-            color: 0xff3333,
-            emissive: 0xff3333,
-            emissiveIntensity: 0.8,
-            roughness: 0.2,
-            metalness: 0.1
-        });
-        const ledGeom = new THREE.SphereGeometry(0.02, 8, 8);
-        const led = new THREE.Mesh(ledGeom, ledMat);
-        led.position.set(0.08, 1.05, 0);
-        grp.add(led);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function createBanner(x, z) {
-        const grp = new THREE.Group();
-
-        const baseMat = new THREE.MeshStandardMaterial({
-            color: 0x555555,
-            roughness: 0.4,
-            metalness: 0.5,
-            envMapIntensity: 0.6
-        });
-        const baseGeom = new THREE.CylinderGeometry(0.2, 0.22, 0.05, 16);
-        const base = new THREE.Mesh(baseGeom, baseMat);
-        base.position.y = 0.025;
-        base.castShadow = true;
-        base.receiveShadow = true;
-        grp.add(base);
-
-        const poleGeom = new THREE.CylinderGeometry(0.02, 0.022, 2.0, 12);
-        const pole = new THREE.Mesh(poleGeom, baseMat);
-        pole.position.y = 1.05;
-        pole.castShadow = true;
-        grp.add(pole);
-
-        const bannerMat = new THREE.MeshStandardMaterial({
-            color: 0x4466ff,
-            roughness: 0.8,
-            metalness: 0.0,
-            side: THREE.DoubleSide,
-            envMapIntensity: 0.3
-        });
-        const bannerGeom = new THREE.PlaneGeometry(0.95, 1.5);
-        const banner = new THREE.Mesh(bannerGeom, bannerMat);
-        banner.position.set(0, 1.35, 0.02);
-        banner.castShadow = true;
-        grp.add(banner);
-
-        const barGeom = new THREE.CylinderGeometry(0.025, 0.025, 1.0, 8);
-        const bar = new THREE.Mesh(barGeom, baseMat);
-        bar.position.set(0, 2.15, 0);
-        bar.rotation.z = Math.PI / 2;
-        bar.castShadow = true;
-        grp.add(bar);
-
-        grp.position.set(x, 0, z);
-        return grp;
-    }
-
-    function create3DObject(type, id, x, z) {
-        let obj = null;
-        switch(type) {
-            case 'table':   obj = createTable(x, z); break;
-            case 'chair':   obj = createChair(x, z); break;
-            case 'counter': obj = createCounter(x, z); break;
-            case 'shelf':   obj = createShelf(x, z); break;
-            case 'monitor': obj = createMonitor(x, z); break;
-            case 'speaker': obj = createSpeaker(x, z); break;
-            case 'camera':  obj = createCamera(x, z); break;
-            case 'banner':  obj = createBanner(x, z); break;
-        }
-
-        if(obj) {
-            obj.userData.itemId = id;
-            obj.userData.itemType = type;
-            obj.userData.isSelectableGroup = true;
-            obj.userData.rotation = 0;
-            obj.traverse(child => {
-                if(child.isMesh) {
-                    child.userData.selectableGroupId = id;
-                    if(child.material) {
-                        originalMaterials.set(child.uuid, {
-                            color: child.material.color ? child.material.color.clone() : null,
-                            emissive: child.material.emissive ? child.material.emissive.clone() : null
-                        });
-                    }
-                }
-            });
-        }
-        return obj;
-    }
-
-    function highlightObject(obj, highlight) {
-        if(!obj) return;
-        obj.traverse(child => {
-            if(child.isMesh && child.material) {
-                if(highlight) {
-                    child.material.emissive = new THREE.Color(0x334400);
-                    child.material.color.setHex(0xffdd66);
-                } else {
-                    const orig = originalMaterials.get(child.uuid);
-                    if(orig) {
-                        if(orig.color) child.material.color.copy(orig.color);
-                        if(orig.emissive) child.material.emissive.copy(orig.emissive);
-                        else child.material.emissive = new THREE.Color(0x000000);
-                    }
-                }
-            }
-        });
-    }
-
-    function createExhibitionHall() {
-        const hallGroup = new THREE.Group();
-
-        // Потолок
-        const ceilingMat = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.7,
-            metalness: 0.1,
-            envMapIntensity: 0.3
-        });
-        const ceilingGeom = new THREE.PlaneGeometry(50, 50);
-        const ceiling = new THREE.Mesh(ceilingGeom, ceilingMat);
-        ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = 5;
-        ceiling.receiveShadow = true;
-        hallGroup.add(ceiling);
-
-        // Фермы на потолке (металлические балки)
-        const fermaGeom = new THREE.BoxGeometry(0.3, 0.3, 40);
-        const fermaMat = new THREE.MeshStandardMaterial({
-            color: 0x333333,
-            roughness: 0.4,
-            metalness: 0.7,
-            envMapIntensity: 0.8
-        });
-        for(let i = -3; i <= 3; i++) {
-            const ferma = new THREE.Mesh(fermaGeom, fermaMat);
-            ferma.position.set(i * 8, 4.8, 0);
-            ferma.castShadow = true;
-            hallGroup.add(ferma);
-        }
-
-        // Стены павильона (дальний фон)
-        const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x666666,
-            roughness: 0.8,
-            metalness: 0.0,
-            envMapIntensity: 0.2
-        });
-        const backWallGeom = new THREE.PlaneGeometry(50, 5);
-        const backWall = new THREE.Mesh(backWallGeom, wallMat);
-        backWall.position.set(0, 2.5, -25);
-        backWall.receiveShadow = true;
-        hallGroup.add(backWall);
-
-        const leftWallGeom = new THREE.PlaneGeometry(50, 5);
-        const leftWall = new THREE.Mesh(leftWallGeom, wallMat);
-        leftWall.rotation.y = Math.PI / 2;
-        leftWall.position.set(-25, 2.5, 0);
-        leftWall.receiveShadow = true;
-        hallGroup.add(leftWall);
-
-        const rightWallGeom = new THREE.PlaneGeometry(50, 5);
-        const rightWall = new THREE.Mesh(rightWallGeom, wallMat);
-        rightWall.rotation.y = -Math.PI / 2;
-        rightWall.position.set(25, 2.5, 0);
-        rightWall.receiveShadow = true;
-        hallGroup.add(rightWall);
-
-        // Промышленные светильники на потолке
-        const lightFixtureMat = new THREE.MeshStandardMaterial({
-            color: 0x222222,
-            roughness: 0.5,
-            metalness: 0.8,
-            envMapIntensity: 0.6
-        });
-        const fixtureGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
-        for(let i = -2; i <= 2; i++) {
-            for(let j = -2; j <= 2; j++) {
-                const fixture = new THREE.Mesh(fixtureGeom, lightFixtureMat);
-                fixture.position.set(i * 12, 4.9, j * 12);
-                fixture.castShadow = true;
-                hallGroup.add(fixture);
-            }
-        }
-
-        return hallGroup;
-    }
-
-    function rebuildScene() {
-        while(boothGroup.children.length) boothGroup.remove(boothGroup.children[0]);
-        itemMap.clear();
-        originalMaterials.clear();
-
-        const { length, width, height } = config.dims;
-
-        const floorMat = getFloorMaterial();
-        const floorPlane = new THREE.Mesh(new THREE.PlaneGeometry(length, width), floorMat);
-        floorPlane.rotation.x = -Math.PI / 2;
-        floorPlane.receiveShadow = true;
-        boothGroup.add(floorPlane);
-
-        const wallMat = getWallMaterial();
-        const backWall = new THREE.Mesh(new THREE.BoxGeometry(length, height, 0.1), wallMat);
-        backWall.position.set(0, height / 2, -width / 2);
-        backWall.castShadow = true;
-        backWall.receiveShadow = true;
-        boothGroup.add(backWall);
-
-        if(config.wallsCount >= 2) {
-            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
-            leftWall.position.set(-length / 2, height / 2, 0);
-            leftWall.castShadow = true;
-            leftWall.receiveShadow = true;
-            boothGroup.add(leftWall);
-        }
-        if(config.wallsCount >= 3) {
-            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.1, height, width), wallMat);
-            rightWall.position.set(length / 2, height / 2, 0);
-            rightWall.castShadow = true;
-            rightWall.receiveShadow = true;
-            boothGroup.add(rightWall);
-        }
-
-        config.items.forEach(item => {
-            const obj = create3DObject(item.type, item.id, item.posX, item.posZ);
-            if(obj) {
-                boothGroup.add(obj);
-                itemMap.set(item.id, obj);
-            }
-        });
-
-        lamps.forEach(l => scene.remove(l));
-        lamps = [];
-        const lampColor = config.lightType === 'warm' ? 0xffaa66 : (config.lightType === 'cool' ? 0x88aaff : 0xffffff);
-        for(let i = 0; i < config.lampCount; i++) {
-            const lamp = new THREE.PointLight(lampColor, 1.2, 18);
-            lamp.castShadow = true;
-            lamp.shadow.mapSize.width = 1024;
-            lamp.shadow.mapSize.height = 1024;
-            lamp.shadow.bias = -0.0001;
-            lamp.shadow.radius = 4;
-            const angle = (i / Math.max(1, config.lampCount)) * Math.PI * 2;
-            const lampX = Math.cos(angle) * 3.5;
-            const lampZ = Math.sin(angle) * 3.5;
-            lamp.position.set(lampX, 2.8, lampZ);
-            scene.add(lamp);
-            lamps.push(lamp);
-        }
-
-        updatePrice();
-    }
-
-    function updatePrice() {
-        const { length, width, height } = config.dims;
-        const area = length * width;
-        let total = prices.baseSqm * area;
-        total += prices.wallMat[config.wallMaterial] * (2 * (length + width) * height);
-        total += prices.floor[config.floorType] * area;
-        for(let [k, v] of Object.entries(config.furniture)) total += v * prices.furniture[k];
-        for(let [k, v] of Object.entries(config.equipment)) total += v * prices.equipment[k];
-        total += config.lampCount * prices.lamp;
-        document.getElementById('totalPrice').innerHTML = `${Math.round(total).toLocaleString()} €`;
-    }
-
-    function getCanvasRay(event) {
-        const rect = renderer.domElement.getBoundingClientRect();
-        const mouse = new THREE.Vector2(
-            ((event.clientX - rect.left) / rect.width) * 2 - 1,
-            -((event.clientY - rect.top) / rect.height) * 2 + 1
-        );
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(mouse, camera);
-        return raycaster;
-    }
-
-    function getPlaneIntersect(event, plane) {
-        const raycaster = getCanvasRay(event);
-        const point = new THREE.Vector3();
-        if(raycaster.ray.intersectPlane(plane, point)) return point;
-        return null;
-    }
-
-    function trySelectObject(event) {
-        const raycaster = getCanvasRay(event);
-        const allMeshes = [];
-        itemMap.forEach(obj => {
-            obj.traverse(child => {
-                if(child.isMesh) allMeshes.push(child);
-            });
-        });
-
-        const intersects = raycaster.intersectObjects(allMeshes, false);
-        if(intersects.length > 0) {
-            const hitMesh = intersects[0].object;
-            const groupId = hitMesh.userData.selectableGroupId;
-            if(groupId) {
-                const rootObj = itemMap.get(groupId);
-                if(rootObj) return rootObj;
-            }
-        }
-        return null;
-    }
-
-    function initThree() {
-        const canvas = document.getElementById('canvas');
-        const w = canvas.clientWidth, h = canvas.clientHeight;
-
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050b1a);
-        scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
-
-        camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ========== THREE.JS SETUP ==========
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        scene.fog = new THREE.Fog(0x1a1a2e, 20, 50);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3, 2.5, 3);
+        camera.lookAt(0, 0.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMappingExposure = 1.2;
+        renderer.shadowMap.type = THREE.PCFSoftShadowShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        document.body.appendChild(renderer.domElement);
 
-        // Добавляем интерьер павильона
-        const hallGroup = createExhibitionHall();
-        scene.add(hallGroup);
+        // ========== LIGHTING ==========
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
 
-        // Lighting setup
-        scene.add(new THREE.AmbientLight(0x505080, 0.8));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 8, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -15;
+        directionalLight.shadow.camera.right = 15;
+        directionalLight.shadow.camera.top = 15;
+        directionalLight.shadow.camera.bottom = -15;
+        scene.add(directionalLight);
 
-        const mainLight = new THREE.DirectionalLight(0xfff5e0, 1.8);
-        mainLight.position.set(8, 14, 6);
-        mainLight.castShadow = true;
-        mainLight.shadow.mapSize.width = 2048;
-        mainLight.shadow.mapSize.height = 2048;
-        mainLight.shadow.camera.far = 40;
-        mainLight.shadow.camera.left = -20;
-        mainLight.shadow.camera.right = 20;
-        mainLight.shadow.camera.top = 20;
-        mainLight.shadow.camera.bottom = -20;
-        mainLight.shadow.bias = -0.0005;
-        mainLight.shadow.radius = 4;
-        scene.add(mainLight);
-
-        const fillLight = new THREE.DirectionalLight(0x8899ff, 0.5);
-        fillLight.position.set(-6, 10, -6);
+        const fillLight = new THREE.PointLight(0xffffff, 0.3, 50);
+        fillLight.position.set(-5, 3, -5);
         scene.add(fillLight);
 
-        boothGroup = new THREE.Group();
-        scene.add(boothGroup);
+        // ========== ENVIRONMENT ==========
+        function createEnvironment() {
+            const floorGeom = new THREE.PlaneGeometry(30, 30);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0xe8e8e8,
+                roughness: 0.5,
+                metalness: 0.05,
+                envMapIntensity: 0.3
+            });
+            const floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
 
-        window.addEventListener('resize', onResize);
-        canvas.addEventListener('mousedown', onMouseDown);
-        canvas.addEventListener('mousemove', onMouseMove);
-        canvas.addEventListener('mouseup', onMouseUp);
-        canvas.addEventListener('wheel', onWheel, { passive: false });
-        canvas.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('keydown', onKeyDown);
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: 0xd4d4d4,
+                roughness: 0.7,
+                metalness: 0.05,
+                envMapIntensity: 0.2
+            });
+
+            const backWallGeom = new THREE.PlaneGeometry(30, 12);
+            const backWall = new THREE.Mesh(backWallGeom, wallMat);
+            backWall.position.set(0, 6, -15);
+            backWall.receiveShadow = true;
+            scene.add(backWall);
+
+            const sideWallGeom = new THREE.PlaneGeometry(30, 12);
+            const leftWall = new THREE.Mesh(sideWallGeom, wallMat);
+            leftWall.rotation.y = Math.PI / 2;
+            leftWall.position.set(-15, 6, 0);
+            leftWall.receiveShadow = true;
+            scene.add(leftWall);
+
+            const rightWall = new THREE.Mesh(sideWallGeom, wallMat);
+            rightWall.rotation.y = -Math.PI / 2;
+            rightWall.position.set(15, 6, 0);
+            rightWall.receiveShadow = true;
+            scene.add(rightWall);
+
+            const beamMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.4,
+                metalness: 0.8,
+                envMapIntensity: 0.5
+            });
+
+            for(let i = -12; i <= 12; i += 4) {
+                const beamGeom = new THREE.BoxGeometry(30, 0.15, 0.15);
+                const beam = new THREE.Mesh(beamGeom, beamMat);
+                beam.position.set(0, 11.5, i);
+                beam.castShadow = true;
+                scene.add(beam);
+            }
+        }
+
+        createEnvironment();
+
+        // ========== FURNITURE CREATION ==========
+
+        function createChair(x, z, color = 0x3a3a3a) {
+            const grp = new THREE.Group();
+
+            const seatMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.7,
+                metalness: 0.0,
+                envMapIntensity: 0.3
+            });
+            const seatGeom = new THREE.BoxGeometry(0.52, 0.08, 0.48);
+            const seat = new THREE.Mesh(seatGeom, seatMat);
+            seat.position.y = 0.46;
+            seat.rotation.x = 0;
+            seat.rotation.y = 0;
+            seat.rotation.z = 0;
+            seat.castShadow = true;
+            seat.receiveShadow = true;
+            grp.add(seat);
+
+            const legMat = new THREE.MeshStandardMaterial({
+                color: 0x4a4a4a,
+                roughness: 0.6,
+                metalness: 0.1,
+                envMapIntensity: 0.4
+            });
+            const legGeom = new THREE.CylinderGeometry(0.035, 0.025, 0.44, 8);
+            const legPositions = [[-0.2, 0.22, -0.18], [0.2, 0.22, -0.18], [-0.2, 0.22, 0.18], [0.2, 0.22, 0.18]];
+            legPositions.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(lx, ly, lz);
+                leg.castShadow = true;
+                grp.add(leg);
+            });
+
+            const backMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.7,
+                metalness: 0.0,
+                envMapIntensity: 0.3
+            });
+            const backGeom = new THREE.BoxGeometry(0.48, 0.56, 0.08);
+            const back = new THREE.Mesh(backGeom, backMat);
+            back.position.set(0, 0.78, -0.24);
+            back.rotation.x = 0;
+            back.rotation.y = 0;
+            back.rotation.z = 0;
+            back.castShadow = true;
+            grp.add(back);
+
+            const armMat = new THREE.MeshStandardMaterial({
+                color: 0x4a4a4a,
+                roughness: 0.6,
+                metalness: 0.1,
+                envMapIntensity: 0.4
+            });
+            const armGeom = new THREE.BoxGeometry(0.08, 0.25, 0.06);
+            
+            const armLeft = new THREE.Mesh(armGeom, armMat);
+            armLeft.position.set(-0.27, 0.56, -0.02);
+            armLeft.castShadow = true;
+            grp.add(armLeft);
+
+            const armRight = new THREE.Mesh(armGeom, armMat);
+            armRight.position.set(0.27, 0.56, -0.02);
+            armRight.castShadow = true;
+            grp.add(armRight);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'chair';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 0;
+            return grp;
+        }
+
+        function createSofa(x, z, color = 0x8b7355) {
+            const grp = new THREE.Group();
+
+            const seatMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.8,
+                metalness: 0.0,
+                envMapIntensity: 0.2
+            });
+
+            // Основное сиденье
+            const seatGeom = new THREE.BoxGeometry(2.0, 0.12, 0.8);
+            const seat = new THREE.Mesh(seatGeom, seatMat);
+            seat.position.y = 0.5;
+            seat.castShadow = true;
+            seat.receiveShadow = true;
+            grp.add(seat);
+
+            // Подушки спинки
+            const backGeom = new THREE.BoxGeometry(2.0, 0.6, 0.15);
+            const back = new THREE.Mesh(backGeom, seatMat);
+            back.position.set(0, 0.9, -0.4);
+            back.castShadow = true;
+            grp.add(back);
+
+            // Подлокотники
+            const armGeom = new THREE.BoxGeometry(0.15, 0.5, 0.8);
+            const armLeft = new THREE.Mesh(armGeom, seatMat);
+            armLeft.position.set(-1.05, 0.6, 0);
+            armLeft.castShadow = true;
+            grp.add(armLeft);
+
+            const armRight = new THREE.Mesh(armGeom, seatMat);
+            armRight.position.set(1.05, 0.6, 0);
+            armRight.castShadow = true;
+            grp.add(armRight);
+
+            // Ножки
+            const legMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.5,
+                metalness: 0.3,
+                envMapIntensity: 0.4
+            });
+            const legGeom = new THREE.BoxGeometry(0.1, 0.08, 0.1);
+            const legPositions = [[-0.8, 0.04, -0.35], [0.8, 0.04, -0.35], [-0.8, 0.04, 0.35], [0.8, 0.04, 0.35]];
+            legPositions.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(lx, ly, lz);
+                leg.castShadow = true;
+                grp.add(leg);
+            });
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'sofa';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 0;
+            return grp;
+        }
+
+        function createShowcase(x, z) {
+            const grp = new THREE.Group();
+
+            // Каркас
+            const frameMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.3,
+                metalness: 0.8,
+                envMapIntensity: 0.6
+            });
+
+            const frameGeom = new THREE.BoxGeometry(0.8, 0.05, 0.05);
+            for(let i = 0; i < 4; i++) {
+                const frame = new THREE.Mesh(frameGeom, frameMat);
+                frame.position.y = 0.15 + i * 0.5;
+                frame.castShadow = true;
+                grp.add(frame);
+            }
+
+            // Стекло
+            const glassMat = new THREE.MeshStandardMaterial({
+                color: 0xccccff,
+                roughness: 0.1,
+                metalness: 0.0,
+                transparent: true,
+                opacity: 0.4,
+                envMapIntensity: 1.0
+            });
+
+            const glassGeom = new THREE.BoxGeometry(0.75, 1.8, 0.5);
+            const glass = new THREE.Mesh(glassGeom, glassMat);
+            glass.position.y = 0.9;
+            glass.castShadow = true;
+            grp.add(glass);
+
+            // Полки внутри
+            const shelfMat = new THREE.MeshStandardMaterial({
+                color: 0x4a4a4a,
+                roughness: 0.6,
+                metalness: 0.2,
+                envMapIntensity: 0.3
+            });
+
+            const shelfGeom = new THREE.BoxGeometry(0.7, 0.02, 0.45);
+            for(let i = 0; i < 4; i++) {
+                const shelf = new THREE.Mesh(shelfGeom, shelfMat);
+                shelf.position.y = 0.3 + i * 0.5;
+                shelf.castShadow = true;
+                grp.add(shelf);
+            }
+
+            // LED подсветка
+            const lightMat = new THREE.MeshStandardMaterial({
+                color: 0xffff99,
+                emissive: 0xffff99,
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+
+            const lightGeom = new THREE.BoxGeometry(0.7, 0.02, 0.02);
+            for(let i = 0; i < 4; i++) {
+                const light = new THREE.Mesh(lightGeom, lightMat);
+                light.position.set(0, 0.28 + i * 0.5, 0.23);
+                light.castShadow = true;
+                grp.add(light);
+            }
+
+            // База
+            const baseGeom = new THREE.BoxGeometry(0.8, 0.1, 0.5);
+            const base = new THREE.Mesh(baseGeom, frameMat);
+            base.position.y = 0.05;
+            base.castShadow = true;
+            grp.add(base);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'showcase';
+            grp.userData.rotation = 0;
+            return grp;
+        }
+
+        function createTable(x, z, color = 0xf5f5f5) {
+            const grp = new THREE.Group();
+            
+            const topMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.15,
+                metalness: 0.0,
+                envMapIntensity: 0.8,
+                transparent: true,
+                opacity: 0.95
+            });
+            const topGeom = new THREE.BoxGeometry(1.4, 0.04, 0.75);
+            const top = new THREE.Mesh(topGeom, topMat);
+            top.position.y = 0.78;
+            top.castShadow = true;
+            top.receiveShadow = true;
+            grp.add(top);
+
+            const metalMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.2,
+                metalness: 0.9,
+                envMapIntensity: 1.0
+            });
+
+            const legGeom = new THREE.BoxGeometry(0.08, 0.75, 0.04);
+            const leg1 = new THREE.Mesh(legGeom, metalMat);
+            leg1.position.set(-0.5, 0.38, 0);
+            leg1.castShadow = true;
+            grp.add(leg1);
+
+            const leg2 = new THREE.Mesh(legGeom, metalMat);
+            leg2.position.set(0.5, 0.38, 0);
+            leg2.castShadow = true;
+            grp.add(leg2);
+
+            const crossGeom = new THREE.BoxGeometry(1.0, 0.04, 0.04);
+            const cross = new THREE.Mesh(crossGeom, metalMat);
+            cross.position.y = 0.15;
+            cross.castShadow = true;
+            grp.add(cross);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'table';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 0;
+            return grp;
+        }
+
+        function createMonitor(x, z) {
+            const grp = new THREE.Group();
+
+            const standMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.3,
+                metalness: 0.8,
+                envMapIntensity: 0.6
+            });
+
+            const baseGeom = new THREE.BoxGeometry(0.5, 0.05, 0.3);
+            const base = new THREE.Mesh(baseGeom, standMat);
+            base.position.y = 0.025;
+            base.castShadow = true;
+            grp.add(base);
+
+            const neckGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.4, 16);
+            const neck = new THREE.Mesh(neckGeom, standMat);
+            neck.position.y = 0.25;
+            neck.castShadow = true;
+            grp.add(neck);
+
+            const screenMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.05,
+                metalness: 0.3,
+                emissive: 0x333333,
+                envMapIntensity: 1.0
+            });
+
+            const screenGeom = new THREE.BoxGeometry(0.6, 0.38, 0.04);
+            const screen = new THREE.Mesh(screenGeom, screenMat);
+            screen.position.y = 0.65;
+            screen.castShadow = true;
+            grp.add(screen);
+
+            const bezelMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.4,
+                metalness: 0.5,
+                envMapIntensity: 0.4
+            });
+
+            const bezelGeom = new THREE.BoxGeometry(0.65, 0.43, 0.02);
+            const bezel = new THREE.Mesh(bezelGeom, bezelMat);
+            bezel.position.y = 0.65;
+            bezel.position.z = -0.01;
+            bezel.castShadow = true;
+            grp.add(bezel);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'monitor';
+            grp.userData.rotation = 0;
+            return grp;
+        }
+
+        function createSpeaker(x, z) {
+            const grp = new THREE.Group();
+
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x2a2a2a,
+                roughness: 0.5,
+                metalness: 0.3,
+                envMapIntensity: 0.4
+            });
+
+            const bodyGeom = new THREE.BoxGeometry(0.25, 0.45, 0.25);
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            body.position.y = 0.225;
+            body.castShadow = true;
+            grp.add(body);
+
+            const speakerMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.8,
+                metalness: 0.1,
+                envMapIntensity: 0.2
+            });
+
+            const speakerGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.05, 32);
+            const speaker = new THREE.Mesh(speakerGeom, speakerMat);
+            speaker.position.set(0, 0.35, 0);
+            speaker.castShadow = true;
+            grp.add(speaker);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'speaker';
+            grp.userData.rotation = 0;
+            return grp;
+        }
+
+        function createCamera(x, z) {
+            const grp = new THREE.Group();
+
+            const cameraMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1a1a,
+                roughness: 0.3,
+                metalness: 0.7,
+                envMapIntensity: 0.5
+            });
+
+            const bodyGeom = new THREE.SphereGeometry(0.08, 16, 16);
+            const body = new THREE.Mesh(bodyGeom, cameraMat);
+            body.position.y = 0.08;
+            body.castShadow = true;
+            grp.add(body);
+
+            const lensGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.03, 16);
+            const lens = new THREE.Mesh(lensGeom, cameraMat);
+            lens.position.set(0, 0.08, 0.08);
+            lens.castShadow = true;
+            grp.add(lens);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'camera';
+            grp.userData.rotation = 0;
+            return grp;
+        }
+
+        function createBanner(x, z, color = 0x4a7bdb) {
+            const grp = new THREE.Group();
+
+            const baseMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.6,
+                metalness: 0.2,
+                envMapIntensity: 0.3
+            });
+
+            const baseGeom = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+            const base = new THREE.Mesh(baseGeom, baseMat);
+            base.position.y = 0.05;
+            base.castShadow = true;
+            grp.add(base);
+
+            const poleGeom = new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8);
+            const pole = new THREE.Mesh(poleGeom, baseMat);
+            pole.position.y = 0.95;
+            pole.castShadow = true;
+            grp.add(pole);
+
+            const bannerMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.8,
+                metalness: 0.0,
+                envMapIntensity: 0.2
+            });
+
+            const bannerGeom = new THREE.PlaneGeometry(0.8, 0.6);
+            const banner = new THREE.Mesh(bannerGeom, bannerMat);
+            banner.position.set(0, 1.5, 0);
+            banner.castShadow = true;
+            grp.add(banner);
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'banner';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 2;
+            return grp;
+        }
+
+        function createCounter(x, z, color = 0x8b7355) {
+            const grp = new THREE.Group();
+
+            const topMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.5,
+                metalness: 0.1,
+                envMapIntensity: 0.3
+            });
+
+            const topGeom = new THREE.BoxGeometry(1.0, 0.05, 0.6);
+            const top = new THREE.Mesh(topGeom, topMat);
+            top.position.y = 1.05;
+            top.castShadow = true;
+            grp.add(top);
+
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.6,
+                metalness: 0.05,
+                envMapIntensity: 0.2
+            });
+
+            const bodyGeom = new THREE.BoxGeometry(1.0, 1.0, 0.6);
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            body.position.y = 0.5;
+            body.castShadow = true;
+            grp.add(body);
+
+            const legMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.4,
+                metalness: 0.6,
+                envMapIntensity: 0.4
+            });
+
+            const legGeom = new THREE.BoxGeometry(0.08, 0.5, 0.08);
+            const legPositions = [[-0.4, 0.25, -0.25], [0.4, 0.25, -0.25], [-0.4, 0.25, 0.25], [0.4, 0.25, 0.25]];
+            legPositions.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(legGeom, legMat);
+                leg.position.set(lx, ly, lz);
+                leg.castShadow = true;
+                grp.add(leg);
+            });
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'counter';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 0;
+            return grp;
+        }
+
+        function createShelf(x, z, color = 0x8b7355) {
+            const grp = new THREE.Group();
+
+            const shelfMat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.5,
+                metalness: 0.1,
+                envMapIntensity: 0.3
+            });
+
+            const shelfGeom = new THREE.BoxGeometry(0.8, 0.04, 0.4);
+            for(let i = 0; i < 3; i++) {
+                const shelf = new THREE.Mesh(shelfGeom, shelfMat);
+                shelf.position.y = 0.3 + i * 0.4;
+                shelf.castShadow = true;
+                grp.add(shelf);
+            }
+
+            const bracketMat = new THREE.MeshStandardMaterial({
+                color: 0x3a3a3a,
+                roughness: 0.4,
+                metalness: 0.6,
+                envMapIntensity: 0.4
+            });
+
+            const bracketGeom = new THREE.BoxGeometry(0.04, 0.3, 0.1);
+            for(let i = 0; i < 2; i++) {
+                const bracket = new THREE.Mesh(bracketGeom, bracketMat);
+                bracket.position.set(i === 0 ? -0.35 : 0.35, 0.5, 0);
+                bracket.castShadow = true;
+                grp.add(bracket);
+            }
+
+            grp.position.set(x, 0, z);
+            grp.userData.type = 'shelf';
+            grp.userData.rotation = 0;
+            grp.userData.baseColor = color;
+            grp.userData.colorableIndex = 0;
+            return grp;
+        }
+
+        // ========== OBJECT MANAGEMENT ==========
+        const objects = [];
+        let selectedObject = null;
+
+        function addObject(type) {
+            let obj;
+            const x = (Math.random() - 0.5) * 2;
+            const z = (Math.random() - 0.5) * 2;
+
+            switch(type) {
+                case 'chair': obj = createChair(x, z); break;
+                case 'sofa': obj = createSofa(x, z); break;
+                case 'table': obj = createTable(x, z); break;
+                case 'monitor': obj = createMonitor(x, z); break;
+                case 'showcase': obj = createShowcase(x, z); break;
+                case 'speaker': obj = createSpeaker(x, z); break;
+                case 'camera': obj = createCamera(x, z); break;
+                case 'banner': obj = createBanner(x, z); break;
+                case 'counter': obj = createCounter(x, z); break;
+                case 'shelf': obj = createShelf(x, z); break;
+                default: return;
+            }
+
+            scene.add(obj);
+            objects.push(obj);
+        }
+
+        function selectObject(obj) {
+            if(selectedObject) {
+                selectedObject.children.forEach(child => {
+                    if(child.material) child.material.emissive.setHex(0x000000);
+                });
+            }
+            selectedObject = obj;
+            if(obj) {
+                obj.children.forEach(child => {
+                    if(child.material) child.material.emissive.setHex(0x444400);
+                });
+                document.getElementById('selectedName').textContent = `Выбрано: ${obj.userData.type}`;
+                document.getElementById('selectedPanel').classList.remove('hidden');
+                document.getElementById('selectedInfo').textContent = `Выбрано: ${obj.userData.type}`;
+                if(obj.userData.baseColor) {
+                    document.getElementById('colorPicker').value = '#' + obj.userData.baseColor.toString(16).padStart(6, '0');
+                }
+            }
+        }
+
+        function changeSelectedColor(colorHex) {
+            if(!selectedObject) return;
+            const colorInt = parseInt(colorHex.slice(1), 16);
+            selectedObject.userData.baseColor = colorInt;
+            
+            selectedObject.children.forEach(child => {
+                if(child.material && child.material.color) {
+                    child.material.color.setHex(colorInt);
+                }
+            });
+        }
+
+        function rotateSelected(angle) {
+            if(selectedObject) {
+                selectedObject.userData.rotation = (selectedObject.userData.rotation + angle) % 360;
+                selectedObject.rotation.y = selectedObject.userData.rotation * Math.PI / 180;
+            }
+        }
+
+        function deleteSelected() {
+            if(selectedObject) {
+                scene.remove(selectedObject);
+                objects.splice(objects.indexOf(selectedObject), 1);
+                selectedObject = null;
+                document.getElementById('selectedPanel').classList.add('hidden');
+                document.getElementById('selectedInfo').textContent = 'Ничего не выбрано';
+            }
+        }
+
+        function clearAll() {
+            objects.forEach(obj => scene.remove(obj));
+            objects.length = 0;
+            selectedObject = null;
+            document.getElementById('selectedPanel').classList.add('hidden');
+            document.getElementById('selectedInfo').textContent = 'Ничего не выбрано';
+        }
+
+        // ========== MOUSE INTERACTION ==========
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let dragPoint = new THREE.Vector3();
+
+        document.addEventListener('mousedown', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(objects, true);
+
+            if(intersects.length > 0) {
+                let obj = intersects[0].object;
+                while(obj.parent && !objects.includes(obj)) obj = obj.parent;
+                selectObject(obj);
+                isDragging = true;
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if(isDragging && selectedObject) {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                raycaster.ray.intersectPlane(dragPlane, dragPoint);
+                selectedObject.position.x = dragPoint.x;
+                selectedObject.position.z = dragPoint.z;
+            }
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'r' || e.key === 'R') rotateSelected(45);
+            if(e.key === 'Delete') deleteSelected();
+        });
+
+        // ========== ANIMATION LOOP ==========
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
 
         animate();
-    }
 
-    function updateCamera() {
-        const x = center.x + panX + radius * Math.sin(orbitX) * Math.cos(orbitY);
-        const y = center.y + panY + radius * Math.sin(orbitY);
-        const z = center.z + panZ + radius * Math.cos(orbitX) * Math.cos(orbitY);
-        camera.position.set(x, y, z);
-        camera.lookAt(center.x + panX, center.y + panY, center.z + panZ);
-    }
-
-    function onMouseDown(e) {
-        e.preventDefault();
-
-        if(e.button === 0) {
-            const hit = trySelectObject(e);
-            if(hit) {
-                if(selectedObj && selectedObj !== hit) highlightObject(selectedObj, false);
-                selectedObj = hit;
-                selectedId = hit.userData.itemId;
-                isDraggingObj = true;
-                dragPlane.set(new THREE.Vector3(0, 1, 0), -selectedObj.position.y);
-                const p = getPlaneIntersect(e, dragPlane);
-                if(p) dragOffsetVec.copy(selectedObj.position).sub(p);
-                highlightObject(selectedObj, true);
-                document.getElementById('selectedInfo').innerText = `✓ ${selectedObj.userData.itemType.toUpperCase()} | Нажми R для вращения`;
-                document.getElementById('selectedInfo').style.display = 'block';
-                document.getElementById('rotationSlider').disabled = false;
-                document.getElementById('rotationSlider').value = selectedObj.userData.rotation || 0;
-                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(selectedObj.userData.rotation || 0)}°`;
-                return;
-            } else {
-                if(selectedObj) {
-                    highlightObject(selectedObj, false);
-                    selectedObj = null;
-                    selectedId = null;
-                    document.getElementById('selectedInfo').style.display = 'none';
-                    document.getElementById('rotationSlider').disabled = true;
-                }
-                isOrbiting = true;
-            }
-        } else if(e.button === 2) {
-            isPanning = true;
-        }
-
-        lastMousePos = { x: e.clientX, y: e.clientY };
-    }
-
-    function onMouseMove(e) {
-        if(isDraggingObj && selectedObj) {
-            const p = getPlaneIntersect(e, dragPlane);
-            if(p) {
-                let newPos = p.clone().add(dragOffsetVec);
-                const limitX = (config.dims.length / 2) - 0.5;
-                const limitZ = (config.dims.width / 2) - 0.5;
-                newPos.x = Math.max(-limitX, Math.min(limitX, newPos.x));
-                newPos.z = Math.max(-limitZ, Math.min(limitZ, newPos.z));
-                newPos.y = selectedObj.position.y;
-                selectedObj.position.copy(newPos);
-                const item = config.items.find(i => i.id === selectedId);
-                if(item) {
-                    item.posX = newPos.x;
-                    item.posZ = newPos.z;
-                }
-            }
-            return;
-        }
-
-        if(!isOrbiting && !isPanning) return;
-
-        const dx = e.clientX - lastMousePos.x;
-        const dy = e.clientY - lastMousePos.y;
-
-        if(isOrbiting) {
-            orbitX += dx * 0.008;
-            orbitY += dy * 0.008;
-            orbitY = Math.max(0.15, Math.min(Math.PI / 2.1, orbitY));
-        } else if(isPanning) {
-            panX -= dx * 0.01;
-            panY += dy * 0.01;
-        }
-
-        lastMousePos = { x: e.clientX, y: e.clientY };
-    }
-
-    function onMouseUp(e) {
-        isDraggingObj = false;
-        isOrbiting = false;
-        isPanning = false;
-    }
-
-    function onWheel(e) {
-        e.preventDefault();
-        radius += e.deltaY * 0.01;
-        radius = Math.max(3.0, Math.min(16, radius));
-    }
-
-    function onKeyDown(e) {
-        if(e.key.toLowerCase() === 'r' && selectedObj) {
-            e.preventDefault();
-            const currentRot = selectedObj.userData.rotation || 0;
-            const newRot = (currentRot + 45) % 360;
-            selectedObj.userData.rotation = newRot;
-            selectedObj.rotation.y = (newRot * Math.PI) / 180;
-            document.getElementById('rotationSlider').value = newRot;
-            document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
-        }
-    }
-
-    function onResize() {
-        const canvas = document.getElementById('canvas');
-        const w = canvas.clientWidth, h = canvas.clientHeight;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-    }
-
-    function animate() {
-        requestAnimationFrame(animate);
-        updateCamera();
-        renderer.render(scene, camera);
-    }
-
-    function buildFurnitureUI() {
-        const container = document.getElementById('furnitureUI');
-        container.innerHTML = '';
-        ['table', 'chair', 'counter', 'shelf'].forEach(type => {
-            const div = document.createElement('div');
-            div.className = 'option-group';
-            const label = document.createElement('label');
-            label.className = 'option-label';
-            label.setAttribute('data-type', type);
-            label.innerText = translations[currentLang][type];
-            const ctrl = document.createElement('div');
-            ctrl.className = 'counter-control';
-            const minus = document.createElement('button');
-            minus.innerText = '−';
-            minus.className = 'counter-btn';
-            const valSpan = document.createElement('span');
-            valSpan.className = 'counter-value';
-            valSpan.id = `furn_${type}`;
-            valSpan.innerText = config.furniture[type];
-            const plus = document.createElement('button');
-            plus.innerText = '+';
-            plus.className = 'counter-btn';
-            minus.addEventListener('click', () => changeFurniture(type, -1));
-            plus.addEventListener('click', () => changeFurniture(type, 1));
-            ctrl.append(minus, valSpan, plus);
-            div.append(label, ctrl);
-            container.appendChild(div);
+        // ========== RESPONSIVE ==========
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
-    }
 
-    function buildEquipmentUI() {
-        const container = document.getElementById('equipmentUI');
-        container.innerHTML = '';
-        ['monitor', 'speaker', 'camera', 'banner'].forEach(type => {
-            const div = document.createElement('div');
-            div.className = 'option-group';
-            const label = document.createElement('label');
-            label.className = 'option-label';
-            label.setAttribute('data-type', type);
-            label.innerText = translations[currentLang][type];
-            const ctrl = document.createElement('div');
-            ctrl.className = 'counter-control';
-            const minus = document.createElement('button');
-            minus.innerText = '−';
-            minus.className = 'counter-btn';
-            const valSpan = document.createElement('span');
-            valSpan.className = 'counter-value';
-            valSpan.id = `equip_${type}`;
-            valSpan.innerText = config.equipment[type];
-            const plus = document.createElement('button');
-            plus.innerText = '+';
-            plus.className = 'counter-btn';
-            minus.addEventListener('click', () => changeEquipment(type, -1));
-            plus.addEventListener('click', () => changeEquipment(type, 1));
-            ctrl.append(minus, valSpan, plus);
-            div.append(label, ctrl);
-            container.appendChild(div);
-        });
-    }
-
-    function addItem(type, category) {
-        const limitX = (config.dims.length / 2) - 0.8;
-        const limitZ = (config.dims.width / 2) - 0.8;
-        const posX = (Math.random() - 0.5) * limitX * 1.6;
-        const posZ = (Math.random() - 0.5) * limitZ * 1.6;
-        const id = `${category}_${type}_${nextId++}`;
-        config.items.push({ id, type, category, posX, posZ });
-    }
-
-    function removeLastItem(type, category) {
-        for(let i = config.items.length - 1; i >= 0; i--) {
-            if(config.items[i].type === type && config.items[i].category === category) {
-                config.items.splice(i, 1);
-                break;
-            }
-        }
-    }
-
-    function changeFurniture(type, delta) {
-        let newVal = config.furniture[type] + delta;
-        if(newVal < 0) newVal = 0;
-        if(newVal > 20) newVal = 20;
-        if(newVal > config.furniture[type]) for(let i = 0; i < newVal - config.furniture[type]; i++) addItem(type, 'furniture');
-        else if(newVal < config.furniture[type]) for(let i = 0; i < config.furniture[type] - newVal; i++) removeLastItem(type, 'furniture');
-        config.furniture[type] = newVal;
-        document.getElementById(`furn_${type}`).innerText = newVal;
-        rebuildScene();
-    }
-
-    function changeEquipment(type, delta) {
-        let newVal = config.equipment[type] + delta;
-        if(newVal < 0) newVal = 0;
-        if(newVal > 20) newVal = 20;
-        if(newVal > config.equipment[type]) for(let i = 0; i < newVal - config.equipment[type]; i++) addItem(type, 'equipment');
-        else if(newVal < config.equipment[type]) for(let i = 0; i < config.equipment[type] - newVal; i++) removeLastItem(type, 'equipment');
-        config.equipment[type] = newVal;
-        document.getElementById(`equip_${type}`).innerText = newVal;
-        rebuildScene();
-    }
-
-    function syncUI() {
-        document.querySelectorAll('[data-length]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-length="${config.dims.length}"]`).classList.add('selected');
-        document.querySelectorAll('[data-width]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-width="${config.dims.width}"]`).classList.add('selected');
-        document.querySelectorAll('[data-height]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-height="${config.dims.height}"]`).classList.add('selected');
-        document.querySelectorAll('[data-walls]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-walls="${config.wallsCount}"]`).classList.add('selected');
-        document.getElementById('wallColorPicker').value = config.wallColor;
-        document.getElementById('floorColorPicker').value = config.floorColor;
-        document.querySelectorAll('[data-wallmat]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-wallmat="${config.wallMaterial}"]`).classList.add('selected');
-        document.querySelectorAll('[data-floortype]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-floortype="${config.floorType}"]`).classList.add('selected');
-        document.querySelectorAll('[data-lighttype]').forEach(btn => btn.classList.remove('selected'));
-        document.querySelector(`[data-lighttype="${config.lightType}"]`).classList.add('selected');
-        document.getElementById('lampCountVal').innerText = config.lampCount;
-        buildFurnitureUI();
-        buildEquipmentUI();
-    }
-
-    function resetConfig() {
-        if(selectedObj) {
-            highlightObject(selectedObj, false);
-            selectedObj = null;
-            selectedId = null;
-            document.getElementById('selectedInfo').style.display = 'none';
-            document.getElementById('rotationSlider').disabled = true;
-        }
-        config = {
-            dims: { length: 4, width: 3, height: 2.5 },
-            wallsCount: 3,
-            wallColor: '#ffffff',
-            wallMaterial: 'plastic',
-            floorColor: '#cccccc',
-            floorType: 'carpet',
-            lightType: 'warm',
-            lampCount: 2,
-            furniture: { table: 0, chair: 0, counter: 0, shelf: 0 },
-            equipment: { monitor: 0, speaker: 0, camera: 0, banner: 0 },
-            items: []
-        };
-        nextId = 1;
-        syncUI();
-        rebuildScene();
-    }
-
-    function saveToFile() {
-        const dataStr = JSON.stringify(config, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'booth_config.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        alert('Конфигурация сохранена');
-    }
-
-    function attachEvents() {
-        document.getElementById('lengthOpts').querySelectorAll('[data-length]').forEach(btn => btn.addEventListener('click', e => {
-            config.dims.length = parseFloat(e.target.dataset.length);
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('widthOpts').querySelectorAll('[data-width]').forEach(btn => btn.addEventListener('click', e => {
-            config.dims.width = parseFloat(e.target.dataset.width);
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('heightOpts').querySelectorAll('[data-height]').forEach(btn => btn.addEventListener('click', e => {
-            config.dims.height = parseFloat(e.target.dataset.height);
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('wallsCountOpts').querySelectorAll('[data-walls]').forEach(btn => btn.addEventListener('click', e => {
-            config.wallsCount = parseInt(e.target.dataset.walls);
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('wallColorPicker').addEventListener('change', e => {
-            config.wallColor = e.target.value;
-            rebuildScene();
-        });
-        document.getElementById('floorColorPicker').addEventListener('change', e => {
-            config.floorColor = e.target.value;
-            rebuildScene();
-        });
-        document.getElementById('wallMatOpts').querySelectorAll('[data-wallmat]').forEach(btn => btn.addEventListener('click', e => {
-            config.wallMaterial = e.target.dataset.wallmat;
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('floorTypeOpts').querySelectorAll('[data-floortype]').forEach(btn => btn.addEventListener('click', e => {
-            config.floorType = e.target.dataset.floortype;
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('lightTypeOpts').querySelectorAll('[data-lighttype]').forEach(btn => btn.addEventListener('click', e => {
-            config.lightType = e.target.dataset.lighttype;
-            rebuildScene();
-            syncUI();
-        }));
-        document.getElementById('lampPlus').addEventListener('click', () => {
-            if(config.lampCount < 8) {
-                config.lampCount++;
-                document.getElementById('lampCountVal').innerText = config.lampCount;
-                rebuildScene();
-            }
-        });
-        document.getElementById('lampMinus').addEventListener('click', () => {
-            if(config.lampCount > 0) {
-                config.lampCount--;
-                document.getElementById('lampCountVal').innerText = config.lampCount;
-                rebuildScene();
-            }
-        });
-        document.getElementById('rotLeft').addEventListener('click', () => {
-            if(selectedObj) {
-                const currentRot = selectedObj.userData.rotation || 0;
-                const newRot = (currentRot - 45 + 360) % 360;
-                selectedObj.userData.rotation = newRot;
-                selectedObj.rotation.y = (newRot * Math.PI) / 180;
-                document.getElementById('rotationSlider').value = newRot;
-                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
-            }
-        });
-        document.getElementById('rotRight').addEventListener('click', () => {
-            if(selectedObj) {
-                const currentRot = selectedObj.userData.rotation || 0;
-                const newRot = (currentRot + 45) % 360;
-                selectedObj.userData.rotation = newRot;
-                selectedObj.rotation.y = (newRot * Math.PI) / 180;
-                document.getElementById('rotationSlider').value = newRot;
-                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(newRot)}°`;
-            }
-        });
-        document.getElementById('rotationSlider').addEventListener('input', e => {
-            if(selectedObj) {
-                const angle = parseFloat(e.target.value);
-                selectedObj.userData.rotation = angle;
-                selectedObj.rotation.y = (angle * Math.PI) / 180;
-                document.getElementById('rotAngleDisplay').innerText = `Угол: ${Math.round(angle)}°`;
-            }
-        });
-        document.getElementById('saveBtn').addEventListener('click', saveToFile);
-        document.getElementById('resetBtn').addEventListener('click', resetConfig);
-        document.querySelectorAll('.category-header').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('active')));
-        document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => {
-            currentLang = btn.dataset.lang;
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            applyLanguage();
-            syncUI();
-        }));
-    }
-
-    function start() {
-        initThree();
-        attachEvents();
-        syncUI();
-        rebuildScene();
-        applyLanguage();
-    }
-
-    start();
-</script>
+        // Добавляем предметы по умолчанию
+        addObject('chair');
+        addObject('table');
+        addObject('monitor');
+    </script>
 </body>
 </html>
